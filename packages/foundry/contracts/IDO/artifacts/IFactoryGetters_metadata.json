@@ -1,0 +1,85 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "getFeeAddress",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getLauncherToken",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getStakerAddress",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"IDO/IFactoryGetters.sol": "IFactoryGetters"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": true,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"IDO/IFactoryGetters.sol": {
+			"keccak256": "0xc32a55332fbfb8cc0dcc20a1d7ee075b1bd6cc375b9ad91ac1fe0c84556c8cc7",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://fd99968c9260c25ccdc5c7df3ce426d9f4858f32306016162ff6b5b0cb3e644f",
+				"dweb:/ipfs/QmeDJ1apPPUn9GdmGszzbRuyCEMeiX73t4xmNjyqn2fg6x"
+			]
+		}
+	},
+	"version": 1
+}

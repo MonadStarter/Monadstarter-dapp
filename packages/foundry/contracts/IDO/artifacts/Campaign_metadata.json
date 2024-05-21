@@ -1,0 +1,1133 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timeStamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amountFTM",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amountToken",
+						"type": "uint256"
+					}
+				],
+				"name": "Purchased",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timeStamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amountFTM",
+						"type": "uint256"
+					}
+				],
+				"name": "Refund",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timeStamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "tierIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "Registered",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timeStamp",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amountToken",
+						"type": "uint256"
+					}
+				],
+				"name": "TokenClaimed",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "BURN_ADDRESS",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "allUserProfile",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "isRegisterd",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "inTier",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "burnUnSold",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "buyFCFSTokens",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "buyTierTokens",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_FTMInvestment",
+						"type": "uint256"
+					}
+				],
+				"name": "calculateTokenAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "campaignOwner",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "cancelled",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "claimTokens",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "claimedRecords",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "collectedFTM",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "currentPeriod",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "period",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "endDate",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "factory",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "failedOrCancelled",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "feePcnt",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "finishUp",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "finishUpSuccess",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "fundIn",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "fundOut",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getCampaignFundInTokensRequired",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_user",
+						"type": "address"
+					}
+				],
+				"name": "getClaimableTokenAmt",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getRemaining",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "hardCap",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "indexToTier",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "weight",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "minTokens",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "noOfParticipants",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "_campaignOwner",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256[4]",
+						"name": "_stats",
+						"type": "uint256[4]"
+					},
+					{
+						"internalType": "uint256[4]",
+						"name": "_dates",
+						"type": "uint256[4]"
+					},
+					{
+						"internalType": "bool",
+						"name": "_burnUnSold",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_tokenLockTime",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256[6]",
+						"name": "_tierWeights",
+						"type": "uint256[6]"
+					},
+					{
+						"internalType": "uint256[6]",
+						"name": "_tierMinTokens",
+						"type": "uint256[6]"
+					}
+				],
+				"name": "initialize",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "isInEnd",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "isInFCFS",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "isInRegistration",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "isInTierSale",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "isLive",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "participants",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "refund",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "regEndDate",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_tierIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "registerForIDO",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address[]",
+						"name": "_accounts",
+						"type": "address[]"
+					},
+					{
+						"internalType": "uint256[]",
+						"name": "_tiers",
+						"type": "uint256[]"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_tokenLockTime",
+						"type": "uint256"
+					}
+				],
+				"name": "registerForIDOByFactory",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "setCancelled",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "setTokenClaimable",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "sharePriceInFTM",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "softCap",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "startDate",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "tierSaleEndDate",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "token",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "tokenFunded",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "tokenLockTime",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "tokenReadyToClaim",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "tokenSalesQty",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "totalPoolShares",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "unlockDate",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "userAllocation",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "maxInvest",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "maxTokensGet",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "userMaxInvest",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "userMaxTokens",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "userRegistered",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "userTier",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"buyFCFSTokens()": {
+					"details": "Allows registered user to buy token in FCFS."
+				},
+				"buyTierTokens()": {
+					"details": "Allows registered user to buy token in tiers."
+				},
+				"calculateTokenAmount(uint256)": {
+					"details": "Calculate amount of token receivable.",
+					"params": {
+						"_FTMInvestment": "- Amount of FTM invested"
+					},
+					"returns": {
+						"_0": "- The amount of token"
+					}
+				},
+				"claimTokens()": {
+					"details": "Allow users to claim their tokens."
+				},
+				"failedOrCancelled()": {
+					"details": "To check whether the campaign failed (softcap not met) or cancelled",
+					"returns": {
+						"_0": "- Bool value"
+					}
+				},
+				"finishUp()": {
+					"details": "When a campaign reached the endDate, this function is called.Add liquidity to uniswap and burn the remaining tokens.Can be only executed when the campaign completes.Anyone can call. Only called once."
+				},
+				"fundIn()": {
+					"details": "Allows campaign owner to fund in his token."
+				},
+				"getCampaignFundInTokensRequired()": {
+					"details": "Calculate and return the Token amount need to be deposit by the project owner.",
+					"returns": {
+						"_0": "- The amount of token required"
+					}
+				},
+				"getClaimableTokenAmt(address)": {
+					"details": "To calculate the calimable token amount based on user's total invested FTM",
+					"params": {
+						"_user": "- The user's wallet address"
+					},
+					"returns": {
+						"_0": "- The total amount of token"
+					}
+				},
+				"getRemaining()": {
+					"details": "Gets remaining FTM to reach hardCap.",
+					"returns": {
+						"_0": "- The amount of FTM."
+					}
+				},
+				"initialize(address,address,uint256[4],uint256[4],bool,uint256,uint256[6],uint256[6])": {
+					"details": "Initialize  a new campaign."
+				},
+				"isLive()": {
+					"details": "To check whether the campaign is isLive? isLive means a user can still invest in the project.",
+					"returns": {
+						"_0": "- Bool value"
+					}
+				},
+				"refund()": {
+					"details": "Allows Participants to withdraw/refunds when campaign fails"
+				},
+				"registerForIDO(uint256)": {
+					"details": "To Register In The Campaign In Reg Period",
+					"params": {
+						"_tierIndex": "- The tier index to participate in"
+					}
+				},
+				"setCancelled()": {
+					"details": "Set a campaign as cancelled.This can only be set before tokenReadyToClaim, finishUpSuccess, liquidityCreated .ie, the users can either claim tokens or get refund, but Not both."
+				},
+				"setTokenClaimable()": {
+					"details": "Allow either Campaign owner or Factory owner to call thisto set the flag to enable token claiming.This is useful when 1 project has multiple campaigns thatto sync up the timing of token claiming."
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {
+				"buyFCFSTokens()": {
+					"notice": "- Access control: Public"
+				},
+				"buyTierTokens()": {
+					"notice": "- Access control: Public"
+				},
+				"calculateTokenAmount(uint256)": {
+					"notice": "- Access control: Public"
+				},
+				"claimTokens()": {
+					"notice": "- Access control: External"
+				},
+				"failedOrCancelled()": {
+					"notice": "- Access control: Public"
+				},
+				"finishUp()": {
+					"notice": "- Access control: Public"
+				},
+				"fundIn()": {
+					"notice": "- Access control: External, OnlyCampaignOwner"
+				},
+				"getCampaignFundInTokensRequired()": {
+					"notice": "- Access control: Public"
+				},
+				"getClaimableTokenAmt(address)": {
+					"notice": "- Access control: Public"
+				},
+				"getRemaining()": {
+					"notice": "- Access control: Public"
+				},
+				"initialize(address,address,uint256[4],uint256[4],bool,uint256,uint256[6],uint256[6])": {
+					"notice": "- Access control: External. Can only be called by the factory contract."
+				},
+				"isLive()": {
+					"notice": "- Access control: Public"
+				},
+				"refund()": {
+					"notice": "- Access control: Public"
+				},
+				"registerForIDO(uint256)": {
+					"notice": "- Valid tier indexes are, 1, 2, 3 ... 6- Access control: Public"
+				},
+				"setCancelled()": {
+					"notice": "- Access control: Public, OnlyFactory"
+				},
+				"setTokenClaimable()": {
+					"notice": "- Access control: External,  onlyFactoryOrCampaignOwner"
+				}
+			},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"IDO/Campaign.sol": "Campaign"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": true,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"Address.sol": {
+			"keccak256": "0xbd672fcf2e48822392fd5afd6894e66d085908d4caa240d0da40f55bf81c577b",
+			"license": "UNLICENSED",
+			"urls": [
+				"bzz-raw://4a2b310a915e695b1bb6ec2d918a00f7e01cb475d1ae105c3fbba6960e0a99e5",
+				"dweb:/ipfs/QmQhBXvwsNnJp7V7dWEkyKj8yDaFnz8VdntHJGcfuRMvrp"
+			]
+		},
+		"Context.sol": {
+			"keccak256": "0x67611eb16e28c035e6ea0d0456e05b487d119589ad4777c3c3a72d784c67c86f",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://dc8f2be511674a7a2ecba5fccd5288b1be32d147fcd23b52efc171477bdf180f",
+				"dweb:/ipfs/QmdmMUos2JeidoRqH5uKLso2pw5T7HD89tef5QV78enfDy"
+			]
+		},
+		"ERC20.sol": {
+			"keccak256": "0x149602bf593346e08faf6ee2b23747ada13ba69566c2bc21c85784cf0656d24c",
+			"license": "UNLICENSED",
+			"urls": [
+				"bzz-raw://c3e41b0baf2c63ea027167f6610566157e53303d954d82ca46d0544024e69a84",
+				"dweb:/ipfs/QmTZUdmW5JpFwBenRr65QdDeAkZ4xWvUmbo1jbGWuiHPtw"
+			]
+		},
+		"IDO/Campaign.sol": {
+			"keccak256": "0x26484b2ee83c8373039478a7248ec63a0efec7c037d5fd4b7dec45b773e40782",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://b3e6fb3500c401b7a2f1af3e942b1081a5170825ef09cbfab46d33dd3469da05",
+				"dweb:/ipfs/QmR5qHP5kk2shaRW8RG6gdA3r8TAqeM23mjX2LCpMHjMQJ"
+			]
+		},
+		"IDO/IFactoryGetters.sol": {
+			"keccak256": "0xc32a55332fbfb8cc0dcc20a1d7ee075b1bd6cc375b9ad91ac1fe0c84556c8cc7",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://fd99968c9260c25ccdc5c7df3ce426d9f4858f32306016162ff6b5b0cb3e644f",
+				"dweb:/ipfs/QmeDJ1apPPUn9GdmGszzbRuyCEMeiX73t4xmNjyqn2fg6x"
+			]
+		},
+		"IERC20.sol": {
+			"keccak256": "0x541d1f709b4f8836b7056a2b317bb7fc70bfdf6880b83fdec0bba23efd3c884e",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://cdebf9a3994158a29c1524cbb05e8d5a6ed45cec66179fb74f394be5c3715d71",
+				"dweb:/ipfs/Qmbu8otmXBge5NJEdkFZvFiUh21MxvVdGMkqhypJQgqui7"
+			]
+		},
+		"Ownable.sol": {
+			"keccak256": "0x3ae955a204bfb9c4d1a16743ea040a8183bea20a92a956f9c0cfbd668e6ae54c",
+			"license": "UNLICENSED",
+			"urls": [
+				"bzz-raw://5a5dd491d672e0f90cc29f298de10666549bdb553f91386f789079e962046615",
+				"dweb:/ipfs/QmVYfD9H2PytxFMwopbUuSyJSYc7Xk8dC2VZCAM487VQgm"
+			]
+		},
+		"SafeERC20.sol": {
+			"keccak256": "0xab627654bda3c25941006227967170ab7e7323387b0e0518221dbc7fa7a81efe",
+			"license": "UNLICENSED",
+			"urls": [
+				"bzz-raw://098912b22d1d0d2a7553b5c9d85ada931dc167ff29a7e5965a856257631b6dc4",
+				"dweb:/ipfs/QmQNuUeQyuaYKKP95LxAVMmtkbaxx3dgbDDBvHU1kHJX1M"
+			]
+		},
+		"SafeMath.sol": {
+			"keccak256": "0x20b9e0497629d8be148b96c6310cac45bd42c109718526f851c772a217945717",
+			"license": "UNLICENSED",
+			"urls": [
+				"bzz-raw://cf1b4e9f3786cf5ea4dc4965b943c9f6177e3712641fe32838e98310727cbd26",
+				"dweb:/ipfs/QmNjAi2hAVJfG8dx2VyAB1DgnoSEhYzUVjzWcXr3NEwe4D"
+			]
+		},
+		"Staker.sol": {
+			"keccak256": "0x42eada3e472c7cb097e04ddbe41e3a8501d09d4fa0372bc0cf935380225f9d2e",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://94fc3c0cbbdfa46ea1d80f94b7b010d1adab7027cb5d5c7163fda90168616e0b",
+				"dweb:/ipfs/QmRA9vLevoenR3aivtnw8xnzfcweQiDhMcNTaaoPrrQZzB"
+			]
+		}
+	},
+	"version": 1
+}
