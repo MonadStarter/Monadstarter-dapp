@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Staker.sol";
 import "./IFactoryGetters.sol";
 
@@ -169,11 +169,9 @@ contract Campaign is ReentrancyGuard {
         return allUserProfile[account].inTier;
     }
 
-    function userAllocation(address account)
-        public
-        view
-        returns (uint256 maxInvest, uint256 maxTokensGet)
-    {
+    function userAllocation(
+        address account
+    ) public view returns (uint256 maxInvest, uint256 maxTokensGet) {
         UserProfile memory usr = allUserProfile[account];
         TierProfile memory tier = indexToTier[usr.inTier];
         uint256 userShare = tier.weight;
@@ -253,11 +251,10 @@ contract Campaign is ReentrancyGuard {
         emit Registered(_account, block.timestamp, _tierIndex);
     }
 
-    function _isEligibleForTier(address _account, uint256 _tierIndex)
-        private
-        view
-        returns (bool)
-    {
+    function _isEligibleForTier(
+        address _account,
+        uint256 _tierIndex
+    ) private view returns (bool) {
         IFactoryGetters fact = IFactoryGetters(factory);
         address stakerAddress = fact.getStakerAddress();
 
@@ -339,7 +336,7 @@ contract Campaign is ReentrancyGuard {
         uint256 invested = participants[msg.sender] + value;
 
         participants[msg.sender] = invested;
-        
+
         collectedFTM = collectedFTM + value;
 
         emit Purchased(
@@ -515,11 +512,9 @@ contract Campaign is ReentrancyGuard {
      * @return - The amount of token
      * @notice - Access control: Public
      */
-    function calculateTokenAmount(uint256 _FTMInvestment)
-        public
-        view
-        returns (uint256)
-    {
+    function calculateTokenAmount(
+        uint256 _FTMInvestment
+    ) public view returns (uint256) {
         return (_FTMInvestment * tokenSalesQty) / hardCap;
     }
 
@@ -554,10 +549,10 @@ contract Campaign is ReentrancyGuard {
         return tokenSalesQty;
     }
 
-    function lockTokens(address _user, uint256 _tokenLockTime)
-        internal
-        returns (bool)
-    {
+    function lockTokens(
+        address _user,
+        uint256 _tokenLockTime
+    ) internal returns (bool) {
         IFactoryGetters fact = IFactoryGetters(factory);
         address stakerAddress = fact.getStakerAddress();
 

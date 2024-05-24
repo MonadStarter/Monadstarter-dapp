@@ -1,0 +1,6 @@
+//Multiplier
+// There is no function to select stake duration in staker.sol
+// add a enum so there are only 4 staking options
+
+//Native Token
+// most functions use msg.sender so native token, we need it to use any ERC20

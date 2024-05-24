@@ -31,6 +31,7 @@ contract Factory is IFactoryGetters, Ownable {
         stakerAddress = _stakerAddress;
     }
 
+    //TODO: make sure the decimals of the fee token
     /**
      * @dev Create a new campaign
      * @param _token - The token address
