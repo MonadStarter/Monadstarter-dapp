@@ -4,3 +4,8 @@
 
 //Native Token
 // most functions use msg.sender so native token, we need it to use any ERC20
+
+
+// Tiers
+In current contract, each campaign has different tier and amount requirements, instead we should keep it simple
+Move the tier code to the staker contract.

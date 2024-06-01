@@ -233,6 +233,7 @@ contract Campaign is ReentrancyGuard {
         require(!userRegistered(account), "Already regisered");
         require(_tierIndex >= 1 && _tierIndex <= 6, "Invalid tier index");
 
+        
         lockTokens(account, tokenLockTime); // Lock staked tokens
         require(
             _isEligibleForTier(account, _tierIndex),
@@ -549,6 +550,7 @@ contract Campaign is ReentrancyGuard {
         return tokenSalesQty;
     }
 
+    // TODO: Change this to handle new time enum
     function lockTokens(
         address _user,
         uint256 _tokenLockTime
