@@ -1,6 +1,8 @@
 //Multiplier
 // There is no function to select stake duration in staker.sol
 // add a enum so there are only 4 staking options
+// any default multiplier like 0.75? or something
+
 
 //Native Token
 // most functions use msg.sender so native token, we need it to use any ERC20
@@ -9,3 +11,16 @@
 // Tiers
 In current contract, each campaign has different tier and amount requirements, instead we should keep it simple
 Move the tier code to the staker contract.
+
+// Lock
+The current lock only allows IDOs to lock tokens (so that owner doesnt' run away with money)
+check addIDO and onlyIDO in staker.
+// Should we allow no-lock staking? In this case they get 0.75 multiplier but can stake for APR. 
+
+// when lock ends, do people still earn the multiplier if they don't unstake?
+
+// Staking
+should take duration as a parameter. Only allow user to stake for 1 duration.
+If they staked x for 30 days and want to stake y for 90 days, they need to move 30 days fund to extra 90
+so it all unlocks together and multiplier is easier to calcualte
+Uesrs can increase stake time but can't decrease it

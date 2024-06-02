@@ -122,7 +122,7 @@ contract Campaign is ReentrancyGuard {
         regEndDate = _dates[2];
         tierSaleEndDate = _dates[3];
         burnUnSold = _burnUnSold;
-        tokenLockTime = _tokenLockTime;
+        tokenLockTime = _tokenLockTime; //TODO: might not need this, users should be able to specify this or we can pull from staker contract
         payToken = IERC20(_payToken);
 
         for (uint256 i = 0; i < _tierWeights.length; i++) {
@@ -233,7 +233,6 @@ contract Campaign is ReentrancyGuard {
         require(!userRegistered(account), "Already regisered");
         require(_tierIndex >= 1 && _tierIndex <= 6, "Invalid tier index");
 
-        
         lockTokens(account, tokenLockTime); // Lock staked tokens
         require(
             _isEligibleForTier(account, _tierIndex),

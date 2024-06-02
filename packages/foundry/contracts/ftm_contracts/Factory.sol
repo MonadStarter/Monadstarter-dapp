@@ -25,7 +25,7 @@ contract Factory is IFactoryGetters, Ownable {
         address _stakerAddress,
         address _feeAddress,
         address _paytoken
-    ) {
+    ) Ownable(msg.sender) {
         payToken = _paytoken;
         feeAddress = _feeAddress;
         stakerAddress = _stakerAddress;

@@ -10,7 +10,7 @@ contract Staker is Context, Ownable {
     using Address for address;
     using SafeERC20 for IERC20;
 
-    enum Duration{
+    enum Duration {
         Days_30,
         Days_60,
         Days_90,
@@ -19,97 +19,114 @@ contract Staker is Context, Ownable {
 
     IERC20 _token;
     mapping(address => uint256) _balances;
-    mapping(address => uint256) _unlockTime; //TODO: might be better to store lock time
-    mapping(address => bool) _isIDO;
+    mapping(address => uint256) _lockTime;
+    mapping(address => uint256) _lockDuration;
     uint256[] _multipliers;
     bool halted;
 
-    event Stake(address indexed account, uint256 timestamp, uint256 value);
-    event Unstake(address indexed account, uint256 timestamp, uint256 value);
-    event Lock(
+    event Stake(
         address indexed account,
         uint256 timestamp,
-        uint256 unlockTime,
-        address locker
+        uint256 duration,
+        uint256 value
     );
+    event Unstake(address indexed account, uint256 timestamp, uint256 value);
 
-    constructor(address _tokenAddress) {
+    constructor(address _tokenAddress) Ownable(_msgSender()) {
         _token = IERC20(_tokenAddress);
+        _multipliers = [10, 15, 20, 35]; //default multipliers of 1x,1.5x,2x and 3.5x
     }
 
     function stakedBalance(address account) external view returns (uint256) {
         return _balances[account];
     }
 
-    function unlockTime(address account) external view returns (uint256) {
-        return _unlockTime[account];
+    /**
+     * @dev Get the unlock time of user tokens based on their lock time and total lock duration
+     * @notice - Access control: External.
+     * @return - time at which user tokens will be unlocked
+     */
+    function unlockTime(address account) public view returns (uint256) {
+        return _lockTime[account] + _lockDuration[account];
     }
 
-    function duration_to_time(Duration duration) public view returns(uint256){
-        if duration == Duration.Days_30{
+    function duration_to_time(Duration duration) public pure returns (uint256) {
+        if (duration == Duration.Days_30) {
             return 30 days;
-        } else if duration == Duration.Days_60{
+        } else if (duration == Duration.Days_60) {
             return 60 days;
-        } else if duration == Duration.Days_90{
+        } else if (duration == Duration.Days_90) {
             return 90 days;
-        } else if duration == Duration.Days_180 {
+        } else if (duration == Duration.Days_180) {
             return 180 days;
         }
+        revert("Invalid duration");
     }
 
-    //TODO: need a function to store different stake durations and amount.
-    // A user may stake 100 for 30 days, then 250 for 90 days, need to calcualte multiplier accordingly
+    /**
+     * @dev Stakes and locks the token for the given duration
+     * @notice - Access control: External. Can only be called when app is nothalted
+     * TODO: Make sure that user can only stake in the duration they previously staked or they can move to a higher duration
+     */
+    function stake(uint256 value, Duration duration) external notHalted {
+        require(value > 0, "stake value should be greater than 0");
+        uint256 duration_time = duration_to_time(duration);
+        uint256 unlock_time = duration_time + block.timestamp; // x number of days from now
 
+        //allows locking if the new time is more than previous locked time
+        if (unlock_time > unlockTime(_msgSender())) {
+            //perform staking and locking
+            _token.safeTransferFrom(_msgSender(), address(this), value);
+            _balances[_msgSender()] += value;
+            _lockTime[_msgSender()] = block.timestamp; //TODO: if user stakes more in future, the time would get reset, do we need this
+            _lockDuration[_msgSender()] = duration_time;
 
-    function isIDO(address account) external view returns (bool) {
-        return _isIDO[account];
+            emit Stake(_msgSender(), block.timestamp, duration_time, value);
+        } else {
+            revert("new duration cannot be less than previous duration");
+        }
     }
-
-    
-
-    function stake(uint256 value) external notHalted {
-        require(value > 0, "Staker: stake value should be greater than 0");
-        _token.safeTransferFrom(_msgSender(), address(this), value);
-
-        _balances[_msgSender()] = _balances[_msgSender()] + value;
-        emit Stake(_msgSender(), block.timestamp, value);
-    }
-
+    //TODO: if there a scenario where we need to reset lockDuration and time?
+    // let's say use stakes and after it's lock duration, unstakes.
+    // lockDuration and lockTime would be based on previous values
     function unstake(uint256 value) external lockable {
         require(
             _balances[_msgSender()] >= value,
             "Staker: insufficient staked balance"
         );
+        // if this works, it means all tokens are unlocked, so reset _lockDuration
 
-        _balances[_msgSender()] = _balances[_msgSender()] - value;
+        _balances[_msgSender()] -= value;
         _token.safeTransfer(_msgSender(), value);
         emit Unstake(_msgSender(), block.timestamp, value);
     }
 
-    // function lock(address user, uint256 unlock_time) external onlyIDO {
-    //     require(unlock_time > block.timestamp, "Staker: unlock is in the past");
-    //     if (_unlockTime[user] < unlock_time) {
-    //         _unlockTime[user] = unlock_time;
-    //         emit Lock(user, block.timestamp, unlock_time, _msgSender());
-    //     }
-    // }
-    function lock(address user, Duration unlockTime) external onlyIDO {
-        uint256 unlock_time = duration_to_time(unlockTime) + block.timestamp; // x number of days from now
-        
-        // not needed require(unlock_time + block.timestamp > block.timestamp, "Staker: unlock is in the past");
-        
-        if (_unlockTime[user] < unlock_time) {
-            _unlockTime[user] = unlock_time;
-            emit Lock(user, block.timestamp, unlock_time, _msgSender());
+    // returns user multiplier based on lock duration. If tokens are unlocked, multiplier is 0 right now
+    function user_multiplier(address account) external returns (uint256) {
+        // if the user tokens are unlocked, they don't earn a multiplier
+        if (unlockTime(account) < block.timestamp) {
+            return 0;
         }
-    }
 
+        uint256 lockDuration = _lockDuration[account];
+
+        if (lockDuration == 30 days) {
+            return _multipliers[0];
+        } else if (lockDuration == 60 days) {
+            return _multipliers[1];
+        } else if (lockDuration == 90 days) {
+            return _multipliers[2];
+        } else if (lockDuration == 180 days) {
+            return _multipliers[3];
+        }
+        return 0;
+    }
 
     /**
      * @dev to set the multipliers array. add values in whole decimals
      * @notice - Access control: onlyOwner, they can change the multiplier anytime
      */
-    function set_multiplier(uint256[] multipliers) external onlyOwner {
+    function set_multiplier(uint256[] calldata multipliers) external onlyOwner {
         _multipliers = multipliers;
     }
 
@@ -117,19 +134,10 @@ contract Staker is Context, Ownable {
         halted = status;
     }
 
-    function addIDO(address account) external onlyOwner {
-        require(account != address(0), "Staker: cannot be zero address");
-        _isIDO[account] = true;
-    }
-
-    modifier onlyIDO() {
-        require(_isIDO[_msgSender()], "Staker: only IDOs can lock");
-        _;
-    }
-
+    // ensures that tokens are unlocked for the user
     modifier lockable() {
         require(
-            _unlockTime[_msgSender()] <= block.timestamp,
+            unlockTime(_msgSender()) <= block.timestamp,
             "Staker: account is locked"
         );
         _;
