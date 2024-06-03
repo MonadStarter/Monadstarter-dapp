@@ -32,6 +32,7 @@ contract Staker is Context, Ownable {
     );
     event Unstake(address indexed account, uint256 timestamp, uint256 value);
 
+    //TODO: make sure of the distinction between factory and our multisig as owner
     constructor(address _tokenAddress) Ownable(_msgSender()) {
         _token = IERC20(_tokenAddress);
         _multipliers = [10, 15, 20, 35]; //default multipliers of 1x,1.5x,2x and 3.5x
@@ -71,6 +72,10 @@ contract Staker is Context, Ownable {
     function stake(uint256 value, Duration duration) external notHalted {
         require(value > 0, "stake value should be greater than 0");
         uint256 duration_time = duration_to_time(duration);
+        require(
+            duration_time >= _lockDuration[_msgSender()],
+            "new duration must be greater or equal to previous"
+        );
         uint256 unlock_time = duration_time + block.timestamp; // x number of days from now
 
         //allows locking if the new time is more than previous locked time
@@ -94,8 +99,9 @@ contract Staker is Context, Ownable {
             _balances[_msgSender()] >= value,
             "Staker: insufficient staked balance"
         );
-        // if this works, it means all tokens are unlocked, so reset _lockDuration
-
+        // if this works, it means all tokens are unlocked, so reset _lockDuration and _lockTime
+        _lockDuration[_msgSender()] = 0;
+        _lockTime[_msgSender()] = 0;
         _balances[_msgSender()] -= value;
         _token.safeTransfer(_msgSender(), value);
         emit Unstake(_msgSender(), block.timestamp, value);
@@ -105,7 +111,7 @@ contract Staker is Context, Ownable {
     function user_multiplier(address account) external returns (uint256) {
         // if the user tokens are unlocked, they don't earn a multiplier
         if (unlockTime(account) < block.timestamp) {
-            return 0;
+            return 1; //by default do we want it less?
         }
 
         uint256 lockDuration = _lockDuration[account];
@@ -119,7 +125,7 @@ contract Staker is Context, Ownable {
         } else if (lockDuration == 180 days) {
             return _multipliers[3];
         }
-        return 0;
+        return 1;
     }
 
     /**

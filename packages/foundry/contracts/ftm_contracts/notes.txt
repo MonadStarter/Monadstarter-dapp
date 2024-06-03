@@ -1,7 +1,6 @@
 //Multiplier
 // There is no function to select stake duration in staker.sol
 // add a enum so there are only 4 staking options
-// any default multiplier like 0.75? or something
 
 
 //Native Token
@@ -15,9 +14,8 @@ Move the tier code to the staker contract.
 // Lock
 The current lock only allows IDOs to lock tokens (so that owner doesnt' run away with money)
 check addIDO and onlyIDO in staker.
-// Should we allow no-lock staking? In this case they get 0.75 multiplier but can stake for APR. 
 
-// when lock ends, do people still earn the multiplier if they don't unstake?
+// when lock ends, do people still earn the multiplier if they don't unstake? For now they don't, the multiplier function returns default value of 1
 
 // Staking
 should take duration as a parameter. Only allow user to stake for 1 duration.
