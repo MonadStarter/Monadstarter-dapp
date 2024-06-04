@@ -67,15 +67,19 @@ contract Staker is Context, Ownable {
     /**
      * @dev Stakes and locks the token for the given duration
      * @notice - Access control: External. Can only be called when app is nothalted
-     * TODO: Make sure that user can only stake in the duration they previously staked or they can move to a higher duration
      */
     function stake(uint256 value, Duration duration) external notHalted {
         require(value > 0, "stake value should be greater than 0");
         uint256 duration_time = duration_to_time(duration);
-        require(
-            duration_time >= _lockDuration[_msgSender()],
-            "new duration must be greater or equal to previous"
-        );
+
+        // if the user tokens are not unlocked, then enforce that their stake duration is greater or equal to current duration
+        if (!unlockTime(_msgSender()) <= block.timestamp) {
+            require(
+                duration_time >= _lockDuration[_msgSender()],
+                "new duration must be greater or equal to previous"
+            );
+        }
+
         uint256 unlock_time = duration_time + block.timestamp; // x number of days from now
 
         //allows locking if the new time is more than previous locked time
@@ -83,7 +87,7 @@ contract Staker is Context, Ownable {
             //perform staking and locking
             _token.safeTransferFrom(_msgSender(), address(this), value);
             _balances[_msgSender()] += value;
-            _lockTime[_msgSender()] = block.timestamp; //TODO: if user stakes more in future, the time would get reset, do we need this
+            _lockTime[_msgSender()] = block.timestamp; //TODO: if user stakes more in future, the time would get reset, do we need this?
             _lockDuration[_msgSender()] = duration_time;
 
             emit Stake(_msgSender(), block.timestamp, duration_time, value);
@@ -92,6 +96,7 @@ contract Staker is Context, Ownable {
         }
     }
     //TODO: if there a scenario where we need to reset lockDuration and time?
+    //TODO: we can let users unstake all tokens and not give a parameter for value
     // let's say use stakes and after it's lock duration, unstakes.
     // lockDuration and lockTime would be based on previous values
     function unstake(uint256 value) external lockable {
@@ -110,8 +115,9 @@ contract Staker is Context, Ownable {
     // returns user multiplier based on lock duration. If tokens are unlocked, multiplier is 0 right now
     function user_multiplier(address account) external returns (uint256) {
         // if the user tokens are unlocked, they don't earn a multiplier
+        string revertMsg = "Must lock tokens to participate";
         if (unlockTime(account) < block.timestamp) {
-            return 1; //by default do we want it less?
+            revert(revertMsg);
         }
 
         uint256 lockDuration = _lockDuration[account];
@@ -124,8 +130,9 @@ contract Staker is Context, Ownable {
             return _multipliers[2];
         } else if (lockDuration == 180 days) {
             return _multipliers[3];
+        } else {
+            revert(revertMsg);
         }
-        return 1;
     }
 
     /**

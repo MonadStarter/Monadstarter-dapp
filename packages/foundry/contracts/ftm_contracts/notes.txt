@@ -22,3 +22,7 @@ should take duration as a parameter. Only allow user to stake for 1 duration.
 If they staked x for 30 days and want to stake y for 90 days, they need to move 30 days fund to extra 90
 so it all unlocks together and multiplier is easier to calcualte
 Uesrs can increase stake time but can't decrease it
+
+//Unstake
+unstake is only enabled when tokens are unlocked. Unlocked tokens don't earn multiplier
+So do we want to only allow unstaking all tokens? or leave an option for value?
