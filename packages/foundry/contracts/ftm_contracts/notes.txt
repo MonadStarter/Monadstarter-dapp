@@ -11,6 +11,8 @@
 In current contract, each campaign has different tier and amount requirements, instead we should keep it simple
 Move the tier code to the staker contract.
 
+Add tier in staker contract
+
 // Lock
 The current lock only allows IDOs to lock tokens (so that owner doesnt' run away with money)
 check addIDO and onlyIDO in staker.
@@ -26,3 +28,7 @@ Uesrs can increase stake time but can't decrease it
 //Unstake
 unstake is only enabled when tokens are unlocked. Unlocked tokens don't earn multiplier
 So do we want to only allow unstaking all tokens? or leave an option for value?
+
+
+
+////CAMPAIGN.SOL/////

@@ -22,20 +22,22 @@ contract Campaign is ReentrancyGuard {
     uint256 public endDate;
     uint256 public regEndDate;
     uint256 public tierSaleEndDate;
-    uint256 public tokenLockTime;
+    uint256 public tokenLockTime; // probably don't need this
     IERC20 public payToken;
 
+    //TODO: also have max number of participants
     struct TierProfile {
         uint256 weight;
         uint256 minTokens;
         uint256 noOfParticipants;
     }
     mapping(uint256 => TierProfile) public indexToTier;
-    uint256 public totalPoolShares;
-    uint256 public sharePriceInFTM;
-    bool private isSharePriceSet;
+    uint256 public totalPoolShares; //TODO:what does this mean
+    uint256 public sharePriceInFTM; //TODO:what does this mean
+    bool private isSharePriceSet; //TODO:what does this mean
     address[] public participantsList;
 
+    //TODO: can be in staker contract
     struct UserProfile {
         bool isRegisterd;
         uint256 inTier;
@@ -58,7 +60,7 @@ contract Campaign is ReentrancyGuard {
     mapping(address => bool) public claimedRecords;
     bool public tokenReadyToClaim;
 
-    // Map user address to amount invested in FTM //
+    // Map user address to amount invested in FTM or any ERC-20 //
     mapping(address => uint256) public participants;
 
     address public constant BURN_ADDRESS =
@@ -174,7 +176,7 @@ contract Campaign is ReentrancyGuard {
     ) public view returns (uint256 maxInvest, uint256 maxTokensGet) {
         UserProfile memory usr = allUserProfile[account];
         TierProfile memory tier = indexToTier[usr.inTier];
-        uint256 userShare = tier.weight;
+        uint256 userShare = tier.weight //TODO: add user multiplier here
         if (isSharePriceSet) {
             maxInvest = sharePriceInFTM * userShare;
         } else {
@@ -224,6 +226,7 @@ contract Campaign is ReentrancyGuard {
      * @param _tierIndex - The tier index to participate in
      * @notice - Valid tier indexes are, 1, 2, 3 ... 6
      * @notice - Access control: Public
+     //TODO: probably don't need tierIndex, automatically set tier based on number of staked tokens by user
      */
     function registerForIDO(uint256 _tierIndex) external nonReentrant {
         address account = msg.sender;
@@ -233,6 +236,7 @@ contract Campaign is ReentrancyGuard {
         require(!userRegistered(account), "Already regisered");
         require(_tierIndex >= 1 && _tierIndex <= 6, "Invalid tier index");
 
+        //TODO: not needed, tokens are automatically locked when staking
         lockTokens(account, tokenLockTime); // Lock staked tokens
         require(
             _isEligibleForTier(account, _tierIndex),
@@ -241,9 +245,11 @@ contract Campaign is ReentrancyGuard {
         _register(account, _tierIndex);
     }
 
+    //TODO: not really sure what this is doing
     function _register(address _account, uint256 _tierIndex) private {
         TierProfile storage tier = indexToTier[_tierIndex];
 
+        
         tier.noOfParticipants = (tier.noOfParticipants) + 1; // Update no. of participants
         totalPoolShares = totalPoolShares + tier.weight; // Update total shares
         allUserProfile[_account] = UserProfile(true, _tierIndex); // Update user profile
@@ -251,6 +257,8 @@ contract Campaign is ReentrancyGuard {
         emit Registered(_account, block.timestamp, _tierIndex);
     }
 
+
+    //TODO: not needed, directly get the highest tier a account is eligible for
     function _isEligibleForTier(
         address _account,
         uint256 _tierIndex
@@ -264,6 +272,7 @@ contract Campaign is ReentrancyGuard {
         return indexToTier[_tierIndex].minTokens <= stakedBal;
     }
 
+    //TODO:what does this do, it's not called anywhere
     function _revertEarlyRegistration(address _account) private {
         if (userRegistered(_account)) {
             TierProfile storage tier = indexToTier[
@@ -352,6 +361,7 @@ contract Campaign is ReentrancyGuard {
      * @dev Can be only executed when the campaign completes.
      * @dev Only called once.
      * @notice - Access control: CampaignOwner
+     //TODO: Anyone should be able to call this
      */
     function finishUp() external onlyCampaignOwner {
         require(!finishUpSuccess, "finishUp is already called");
@@ -549,16 +559,16 @@ contract Campaign is ReentrancyGuard {
         return tokenSalesQty;
     }
 
-    // TODO: Change this to handle new time enum
+    // TODO: Staker contract does not support this anymore
     function lockTokens(
         address _user,
         uint256 _tokenLockTime
     ) internal returns (bool) {
-        IFactoryGetters fact = IFactoryGetters(factory);
-        address stakerAddress = fact.getStakerAddress();
+        // IFactoryGetters fact = IFactoryGetters(factory);
+        // address stakerAddress = fact.getStakerAddress();
 
-        Staker stakerContract = Staker(stakerAddress);
-        stakerContract.lock(_user, (block.timestamp + _tokenLockTime));
+        // Staker stakerContract = Staker(stakerAddress);
+        // stakerContract.lock(_user, (block.timestamp + _tokenLockTime));
 
         return true;
     }
