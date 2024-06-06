@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+//TODO: implement APR
 contract Staker is Context, Ownable {
     using Address for address;
     using SafeERC20 for IERC20;
@@ -21,7 +22,8 @@ contract Staker is Context, Ownable {
     mapping(address => uint256) _balances;
     mapping(address => uint256) _lockTime;
     mapping(address => uint256) _lockDuration;
-    uint256[] _multipliers;
+    uint256[] _multipliers; // [10, 15, 20, 35]
+    uint256[] _aprs; //
     bool halted;
 
     event Stake(
@@ -95,11 +97,13 @@ contract Staker is Context, Ownable {
             revert("new duration cannot be less than previous duration");
         }
     }
-    //TODO: if there a scenario where we need to reset lockDuration and time?
-    //TODO: we can let users unstake all tokens and not give a parameter for value
     // let's say use stakes and after it's lock duration, unstakes.
     // lockDuration and lockTime would be based on previous values
+    // TODO: add penalty for early unstaking, give option for early unstaking,
+    // 50% reduce if unstaked before half duration and linerary less for more duration
+    // TODO: penalized tokens stay in the contract
     function unstake(uint256 value) external lockable {
+        //
         require(
             _balances[_msgSender()] >= value,
             "Staker: insufficient staked balance"
@@ -146,6 +150,8 @@ contract Staker is Context, Ownable {
     function halt(bool status) external onlyOwner {
         halted = status;
     }
+
+    //TODO: emergency withdraw by owner
 
     // ensures that tokens are unlocked for the user
     modifier lockable() {
