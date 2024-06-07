@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./EscrowToken.sol";
 
 //TODO: implement APR
 contract Staker is Context, Ownable {
@@ -18,14 +19,17 @@ contract Staker is Context, Ownable {
         Days_180
     }
 
+    EscrowToken private _escrowToken;
     IERC20 _token;
     mapping(address => uint256) _balances;
     mapping(address => uint256) _lockTime;
     mapping(address => uint256) _lockDuration;
+    //TODO: Need to store rewards for participant to make sure they don't claim multiple times
     uint256[] _multipliers; // [10, 15, 20, 35]
     uint256[] _aprs; //different APRs for different stake duration
     uint256 reward_balance; //also add penalized tokens to reward balance
     bool halted;
+
 
     event Stake(
         address indexed account,
@@ -35,11 +39,12 @@ contract Staker is Context, Ownable {
     );
     event Unstake(address indexed account, uint256 timestamp, uint256 value);
     event RewardsFunded(address indexed funder, uint256 amount);
-    //TODO: make sure of the distinction between factory and our multisig as owner
-    constructor(address _tokenAddress) Ownable(_msgSender()) {
-        _token = IERC20(_tokenAddress);
+
+    constructor(address tokenAddress, address escrowTokenAddress) Ownable() {
+        _token = IERC20(tokenAddress);
+        _escrowToken = EscrowToken(escrowTokenAddress);
         _multipliers = [10, 15, 20, 35]; //default multipliers of 1x,1.5x,2x and 3.5x
-        _aprs = [100,300,500,700] //default APR values for different stake durations [1%,3%,5%,7%]
+        _apr =  [100,300,500,700]; //default APR values for different stake durations [1%,3%,5%,7%]
     }
 
     function stakedBalance(address account) external view returns (uint256) {
@@ -85,15 +90,12 @@ contract Staker is Context, Ownable {
      * @notice - Access control: External. Can only be called when app is nothalted
      */
     function stake(uint256 value, Duration duration) external notHalted {
-        require(value > 0, "stake value should be greater than 0");
+        require(value > 0, "Stake value should be greater than 0");
         uint256 duration_time = duration_to_time(duration);
 
         // if the user tokens are not unlocked, then enforce that their stake duration is greater or equal to current duration
-        if (!unlockTime(_msgSender()) <= block.timestamp) {
-            require(
-                duration_time >= _lockDuration[_msgSender()],
-                "new duration must be greater or equal to previous"
-            );
+        if (unlockTime(_msgSender()) <= block.timestamp) {
+            require(duration_time >= _lockDuration[_msgSender()], "New duration must be greater or equal to previous");
         }
 
         uint256 unlock_time = duration_time + block.timestamp; // x number of days from now
@@ -103,20 +105,28 @@ contract Staker is Context, Ownable {
             //perform staking and locking
             _token.safeTransferFrom(_msgSender(), address(this), value);
             _balances[_msgSender()] += value;
-            _lockTime[_msgSender()] = block.timestamp; //TODO: if user stakes more in future, the time would get reset, do we need this?
+            _lockTime[_msgSender()] = block.timestamp;
             _lockDuration[_msgSender()] = duration_time;
+
+            // Mint escrow tokens to the user
+            _escrowToken.mint(_msgSender(), value);
 
             emit Stake(_msgSender(), block.timestamp, duration_time, value);
         } else {
-            revert("new duration cannot be less than previous duration");
+            revert("New duration cannot be less than previous duration");
         }
     }
-    
-        /**
-     * @dev Stakes and locks the token for the given duration
+
+
+    /**
+     * @dev unstakes the value amount of tokens if enough balance and tokens are unlocked.
+     If tokens are locked, user incurs a penalty of at max 50% if unstaked at half of unstake period
+      and lineraly less if unstaked after half duration
+      The peanlized tokens go back to the contract and provide APR to stakers
+      //TODO: transfer APR amount
      * @notice - Access control: External. Can only be called when app is nothalted
      */
-    
+ 
     function unstake(uint256 value) external {
         require(_balances[_msgSender()] >= value, "Staker: insufficient balance");
 
@@ -145,6 +155,11 @@ contract Staker is Context, Ownable {
         // Add the penalty to the reward balance, this will be recycled as additional staker APR
         reward_balance += (value - unstakeAmount); 
 
+        // Burn the escrow tokens from the user
+        _escrowToken.burn(_msgSender(), value);
+
+        //TODO: send APR to the user if available
+
         // if the user unstakes everything or all his tokens are unlocked and he has not received any penaly
         // reset it's duration and lock time
         if (_balances[_msgSender()] == 0 || value == unstakeAmount) {
@@ -156,6 +171,7 @@ contract Staker is Context, Ownable {
         emit Unstake(_msgSender(), block.timestamp, unstakeAmount);
     }
 
+    
 
 
     // returns user multiplier based on lock duration. If tokens are unlocked, multiplier is 0 right now
