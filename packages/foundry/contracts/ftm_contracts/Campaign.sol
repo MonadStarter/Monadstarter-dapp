@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Staker.sol";
 import "./IFactoryGetters.sol";
 
+
+//TODO: Remove dependency on factory, remove factory function calls, add staker contract address
+// Update initialize and constructor
 contract Campaign is ReentrancyGuard {
     using Address for address;
     using SafeERC20 for IERC20;
@@ -33,7 +36,7 @@ contract Campaign is ReentrancyGuard {
     }
     mapping(uint256 => TierProfile) public indexToTier;
     uint256 public totalPoolShares; //TODO:what does this mean
-    uint256 public sharePriceInFTM; //TODO:what does this mean
+    uint256 public sharePriceInFTM; //TODO:what does this mean 
     bool private isSharePriceSet; //TODO:what does this mean
     address[] public participantsList;
 
@@ -167,6 +170,7 @@ contract Campaign is ReentrancyGuard {
         return allUserProfile[account].isRegisterd;
     }
 
+    //TODO: Move to staker
     function userTier(address account) external view returns (uint256) {
         return allUserProfile[account].inTier;
     }

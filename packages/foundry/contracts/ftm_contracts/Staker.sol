@@ -12,7 +12,7 @@ contract Staker is Context, Ownable {
     using SafeERC20 for IERC20;
 
     enum Duration {
-        Days_30,
+        Days_30,f
         Days_60,
         Days_90,
         Days_180
@@ -23,7 +23,8 @@ contract Staker is Context, Ownable {
     mapping(address => uint256) _lockTime;
     mapping(address => uint256) _lockDuration;
     uint256[] _multipliers; // [10, 15, 20, 35]
-    uint256[] _aprs; //
+    uint256[] _aprs; //different APRs for different stake duration
+    uint256 reward_balance; //also add penalized tokens to reward balance
     bool halted;
 
     event Stake(
@@ -33,16 +34,29 @@ contract Staker is Context, Ownable {
         uint256 value
     );
     event Unstake(address indexed account, uint256 timestamp, uint256 value);
-
+    event RewardsFunded(address indexed funder, uint256 amount);
     //TODO: make sure of the distinction between factory and our multisig as owner
     constructor(address _tokenAddress) Ownable(_msgSender()) {
         _token = IERC20(_tokenAddress);
         _multipliers = [10, 15, 20, 35]; //default multipliers of 1x,1.5x,2x and 3.5x
+        _aprs = [100,300,500,700] //default APR values for different stake durations [1%,3%,5%,7%]
     }
 
     function stakedBalance(address account) external view returns (uint256) {
         return _balances[account];
     }
+
+
+    /**
+     * @dev Fund the contract to reward stakers, can be funded by anyone
+     * @notice - Access control: External
+     */
+    function fund_rewards(uint256 amount) external {
+        _token.safeTransferFrom(_msgSender(), address(this), amount);
+        reward_balance += amount;
+        emit RewardsFunded(_msgSender(), amount)
+    }
+
 
     /**
      * @dev Get the unlock time of user tokens based on their lock time and total lock duration
@@ -97,24 +111,52 @@ contract Staker is Context, Ownable {
             revert("new duration cannot be less than previous duration");
         }
     }
-    // let's say use stakes and after it's lock duration, unstakes.
-    // lockDuration and lockTime would be based on previous values
-    // TODO: add penalty for early unstaking, give option for early unstaking,
-    // 50% reduce if unstaked before half duration and linerary less for more duration
-    // TODO: penalized tokens stay in the contract
-    function unstake(uint256 value) external lockable {
-        //
-        require(
-            _balances[_msgSender()] >= value,
-            "Staker: insufficient staked balance"
-        );
-        // if this works, it means all tokens are unlocked, so reset _lockDuration and _lockTime
-        _lockDuration[_msgSender()] = 0;
-        _lockTime[_msgSender()] = 0;
+    
+        /**
+     * @dev Stakes and locks the token for the given duration
+     * @notice - Access control: External. Can only be called when app is nothalted
+     */
+    
+    function unstake(uint256 value) external {
+        require(_balances[_msgSender()] >= value, "Staker: insufficient balance");
+
+        uint256 lockStartTime = _lockTime[_msgSender()];
+        uint256 lockDuration = _lockDuration[_msgSender()];
+        uint256 currentTime = block.timestamp;
+        uint256 unlockTime = lockStartTime + lockDuration;
+
+        require(currentTime >= lockStartTime, "Staker: invalid current time");
+
+        uint256 unstakeAmount = value;
+        if (currentTime < unlockTime) {
+            uint256 halfDuration = lockStartTime + (lockDuration / 2);
+            if (currentTime <= halfDuration) {
+                unstakeAmount = (value * 50) / 100; // 50% reduction
+            } else {
+                // time staked will always be greater than halfduration because the other case is handled in if statement above
+                // thus this value will not be negative or timestaked > lockDuration/2
+                uint256 timeStaked = currentTime - lockStartTime;
+                uint256 linearIncrease = 50 + ((50 * (timeStaked - (lockDuration / 2))) / (lockDuration / 2));
+                unstakeAmount = (value * linearIncrease) / 100;
+            }f
+        }
+
         _balances[_msgSender()] -= value;
-        _token.safeTransfer(_msgSender(), value);
-        emit Unstake(_msgSender(), block.timestamp, value);
+        // Add the penalty to the reward balance, this will be recycled as additional staker APR
+        reward_balance += (value - unstakeAmount); 
+
+        // if the user unstakes everything or all his tokens are unlocked and he has not received any penaly
+        // reset it's duration and lock time
+        if (_balances[_msgSender()] == 0 || value == unstakeAmount) {
+            _lockDuration[_msgSender()] = 0;
+            _lockTime[_msgSender()] = 0;
+        }
+
+        _token.safeTransfer(_msgSender(), unstakeAmount);
+        emit Unstake(_msgSender(), block.timestamp, unstakeAmount);
     }
+
+
 
     // returns user multiplier based on lock duration. If tokens are unlocked, multiplier is 0 right now
     function user_multiplier(address account) external returns (uint256) {
@@ -147,11 +189,25 @@ contract Staker is Context, Ownable {
         _multipliers = multipliers;
     }
 
+    /**
+     * @dev to set the aprs array, add values in multiple of 100
+     * @notice - Access control: onlyOwner, they can change the APR rewards anytime
+     */
+    function set_APRs(uint256[] calldata aprs) external onlyOwner {
+        _aprs = aprs;
+    }
+
     function halt(bool status) external onlyOwner {
         halted = status;
     }
 
-    //TODO: emergency withdraw by owner
+    /**
+     * @dev to allow devs to withdraw tokens from contract in case of a hack or any issue
+     * @notice - Access control: onlyOwner, 
+     */
+    function withdraw(uint256 value) external onlyOwner{
+        _token.safeTransfer(_msgSender(),value);
+    }
 
     // ensures that tokens are unlocked for the user
     modifier lockable() {
@@ -166,4 +222,4 @@ contract Staker is Context, Ownable {
         require(!halted, "Staker: Deposits are paused");
         _;
     }
-}
+}z
