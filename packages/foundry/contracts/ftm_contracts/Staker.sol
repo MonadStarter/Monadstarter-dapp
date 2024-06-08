@@ -8,7 +8,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./EscrowToken.sol";
 
 error InvalidDuration();
-//TODO: implement APR
+error NotStaked(address account);
+error InvalidStakeAmount(uint256 amount);
+
+error NoRewardsToClaim(address account);
+error NoRewardsInTressury();
+//TODO: make sure rewards calculation and decimals are correct
+//TODO: ensure the token approvals when they are required
 contract Staker is Context, Ownable {
     using Address for address;
     using SafeERC20 for IERC20;
@@ -20,13 +26,11 @@ contract Staker is Context, Ownable {
         Days_180
     }
 
-    EscrowToken private _escrowToken;
-    IERC20 _token;
-    //mapping(address => uint256) _balances; //may not need this, just use the balance of esSTRK
-    mapping(address => uint256) private _lockTime;
-    mapping(address => uint256) private _lockDuration;
-    mapping(address => uint256) private _lastRewardsClaim;
-    //TODO: Need to store rewards for participant to make sure they don't claim multiple times
+    EscrowToken private _escrowToken; //esZKSTR
+    IERC20 _token; //ZKSTR
+    mapping(address => uint256) private _lockTime; //when user started staking
+    mapping(address => uint256) private _lockDuration; //duration of user staking
+    mapping(address => uint256) private _lastRewardsClaim; //when the user last claimed their rewards
     uint256[] private _multipliers; // [10, 15, 20, 35]
     uint256[] private _aprs; //different APRs for different stake duration
     uint256 private reward_balance; //also add penalized tokens to reward balance
@@ -42,7 +46,8 @@ contract Staker is Context, Ownable {
     event Unstake(address indexed account, uint256 timestamp, uint256 value);
     event RewardsFunded(address indexed funder, uint256 amount);
     event Claim(address indexed account, uint256 timestamp, uint256 reward);
-    
+    event MultiplierUpdated(uint256[] indexed new_multipliers);
+
     constructor(address tokenAddress, address escrowTokenAddress) Ownable() {
         _token = IERC20(tokenAddress);
         _escrowToken = EscrowToken(escrowTokenAddress);
@@ -50,10 +55,14 @@ contract Staker is Context, Ownable {
         _aprs = [100, 300, 500, 700]; //default APR values for different stake durations [1%,3%,5%,7%]
     }
 
-    //returns the number of esZKSTR a user has
+    /**
+     * @dev staked balance of a user
+     * @notice - Access control: Public.
+     * @return - the number of esZKSTR a user has
+     */
+    //
     function stakedBalance(address account) public view returns (uint256) {
         return _escrowToken.balanceOf(account);
-        //return _balances[account];
     }
 
 
@@ -77,6 +86,12 @@ contract Staker is Context, Ownable {
         return _lockTime[account] + _lockDuration[account];
     }
 
+
+    /**
+     * @dev convert duration enum value to time
+     * @notice - Access control: Public.
+     * @return - time in days
+     */    
     function duration_to_time(Duration duration) public pure returns (uint256) {
         if (duration == Duration.Days_30) {
             return 30 days;
@@ -87,12 +102,16 @@ contract Staker is Context, Ownable {
         } else if (duration == Duration.Days_180) {
             return 180 days;
         }
-        revert("Invalid duration");
+        revert InvalidDuration();
+        
     }
 
-    //returns apr based on lock duration of an account. if duration is 0 (by default)
-    // the call reverts
-    function user_apr(address account) public returns (uint256) {
+    /**
+     * @dev calculates apr based on lock duration of an account. if duration is 0 (by default) it reverts
+     * @notice - Access control: Public.
+     * @return - apr based on locked duration of a user
+     */ 
+    function user_apr(address account) public view returns (uint256) {
         uint256 lockDuration = _lockDuration[account];
         if (lockDuration == 30 days) {
             return _aprs[0];
@@ -103,13 +122,19 @@ contract Staker is Context, Ownable {
         } else if (lockDuration == 180 days) {
             return _aprs[3];
         }
-        revert("Invalid duration");
+        revert InvalidDuration();
     }
-    // returns user multiplier based on lock duration. If tokens are unlocked, multiplier is 0 right now
+
+    /**
+     * @dev user multiplier based on lock duration. If tokens are unlocked, reverts
+     * @notice - Access control: External.
+     * @return - multiplier based on locked duration of a user
+     */ 
+    
     function user_multiplier(address account) external view returns (uint256) {
         // if the user tokens are unlocked, they don't earn a multiplier
         if (unlockTime(account) < block.timestamp) {
-            revert("Must lock tokens to participate");
+            revert NotStaked(account);
         }
 
         uint256 lockDuration = _lockDuration[account];
@@ -122,32 +147,38 @@ contract Staker is Context, Ownable {
             return _multipliers[2];
         } else if (lockDuration == 180 days) {
             return _multipliers[3];
-        } else {
-            revert("Invalid duration");
         }
+        
+        revert InvalidDuration();
     }
 
     /**
      * @dev Stakes and locks the token for the given duration
+     // mints 1:1 esZKSTR to the staker
      * @notice - Access control: External. Can only be called when app is nothalted
      */
     function stake(uint256 value, Duration duration) external notHalted {
-        require(value > 0, "Stake value should be greater than 0");
+        if  (value <= 0){
+            revert InvalidStakeAmount(value);
+        }
+        
         uint256 duration_time = duration_to_time(duration);
-
+        uint256 unlock_time = unlockTime(_msgSender());
         // if the user tokens are not unlocked, then enforce that their stake duration is greater or equal to current duration
-        if (unlockTime(_msgSender()) <= block.timestamp) {
-            require(duration_time >= _lockDuration[_msgSender()], "New duration must be greater or equal to previous");
+        if (unlock_time <= block.timestamp) {
+            if (duration_time < _lockDuration[_msgSender()]){
+                revert InvalidDuration();
+            }
         }
 
-        uint256 unlock_time = duration_time + block.timestamp; // x number of days from now
+        uint256 new_unlock_time = duration_time + block.timestamp; // x number of days from now
 
         //allows locking if the new time is more than previous locked time
-        if (unlock_time > unlockTime(_msgSender())) {
+        // if it's not that means user is trying to set new lock less than previous
+        if (new_unlock_time > unlock_time) {
             //perform staking and locking
             _token.safeTransferFrom(_msgSender(), address(this), value);
-            //_balances[_msgSender()] += value; //probably don't need this 
-            _lockTime[_msgSender()] = block.timestamp;
+            _lockTime[_msgSender()] = block.timestamp; //this resets the lock
             _lockDuration[_msgSender()] = duration_time;
 
             // Mint escrow tokens to the user
@@ -155,7 +186,7 @@ contract Staker is Context, Ownable {
 
             emit Stake(_msgSender(), block.timestamp, duration_time, value);
         } else {
-            revert("New duration cannot be less than previous duration");
+            revert InvalidDuration();
         }
     }
 
@@ -169,20 +200,22 @@ contract Staker is Context, Ownable {
      */
  
     function unstake(uint256 value) external {
-        require(stakedBalance(_msgSender()) >= value, "Staker: insufficient balance");
-
+        if (stakedBalance(_msgSender()) < value){
+            revert InvalidStakeAmount(value);
+        }
+        
         uint256 lockStartTime = _lockTime[_msgSender()];
         uint256 lockDuration = _lockDuration[_msgSender()];
         uint256 currentTime = block.timestamp;
         uint256 unlockTime = lockStartTime + lockDuration;
 
-        require(currentTime >= lockStartTime, "Staker: invalid current time");
-
         uint256 unstakeAmount = value;
+        
+        //if all tokens have not been unlocked
         if (currentTime < unlockTime) {
             uint256 halfDuration = lockStartTime + (lockDuration / 2);
             if (currentTime <= halfDuration) {
-                unstakeAmount = (value * 50) / 100; // 50% reduction
+                unstakeAmount = (value * 50) / 100; // 50% penalization
             } else {
                 // time staked will always be greater than halfduration because the other case is handled in if statement above
                 // thus this value will not be negative or timestaked > lockDuration/2
@@ -192,10 +225,7 @@ contract Staker is Context, Ownable {
             }
         }
 
-        //_balances[_msgSender()] -= value; not needed
         uint256 apr_rewards = calculateRewards(_msgSender());
-
-
         // Add the penalty to the reward balance, this will be recycled as additional staker APR
         reward_balance += (value - unstakeAmount); 
         // Burn the escrow tokens from the user
@@ -212,6 +242,7 @@ contract Staker is Context, Ownable {
         if (reward_balance >= apr_rewards){
             //reduce the apr_reward from the total reward balance
             reward_balance -= apr_rewards;
+            // add the reward to user unstakeAmount
             unstakeAmount += apr_rewards;
             //update the last time user claimed rewards
             _lastRewardsClaim[account] = block.timestamp;
@@ -222,11 +253,22 @@ contract Staker is Context, Ownable {
         emit Unstake(_msgSender(), block.timestamp, unstakeAmount);
     }
 
-    function claim() external lockable {
-        let apr_rewards = calculateRewards(_msgSender());
-        require(apr_rewards > 0, "No rewards to claim");
-        require(reward_balance >= apr_rewards, "Not enough reward balance");
 
+    /**
+     * @dev claim apr rewards
+      The peanlized tokens go back to the contract and provide APR to stakers
+     * @notice - Access control: External. Can be claimed anytime regardless of token unlocks
+     */
+    function claim() external {
+        uint256 apr_rewards = calculateRewards(_msgSender());
+        if (apr_rewards <= 0){
+            revert NoRewardsToClaim(_msgSender());
+        }
+
+        if (reward_balance < apr_rewards){
+            revert NoRewardsInTressury();
+        }
+        
         reward_balance -= apr_rewards;
         _token.safeTransfer(_msgSender(), reward);
         //update the last time user claimed rewards
@@ -235,12 +277,19 @@ contract Staker is Context, Ownable {
         emit Claim(_msgSender(), block.timestamp, apr_rewards);
     }
 
+    /**
+     * @dev calculates the apr amount the user has earned
+     * @notice - Access control: Public
+     * @return - user reward
+     */
+    //TODO: handle the case when user_apr reverts
+    //TODO: make sure the decimal math is right
     // @note: this will still work if pool has no money, do we want to revert or leave?
     function calculateRewards(address account) public view returns (uint256) {
         uint256 apr = user_apr(account);
         uint256 userBalance = stakedBalance(_msgSender());
 
-        // if user has not claims lastRewardsClaim would be 0 otherwise it would be last blocktime when they claimed
+        // if user has not claimed, lastRewardsClaim would be 0 otherwise it would be last blocktime when they claimed
         uint256 lastClaimTime = _lastRewardsClaim[account];
         uint256 duration_time;
         if (lastClaimTime == 0) {
@@ -277,18 +326,10 @@ contract Staker is Context, Ownable {
     /**
      * @dev to allow devs to withdraw tokens from contract in case of a hack or any issue
      * @notice - Access control: onlyOwner, 
+     TODO: do we want to make it more trustworthy to prove that we can't run away with the tokens
      */
     function withdraw(uint256 value) external onlyOwner{
         _token.safeTransfer(_msgSender(),value);
-    }
-
-    // ensures that tokens are unlocked for the user
-    modifier lockable() {
-        require(
-            unlockTime(_msgSender()) <= block.timestamp,
-            "Staker: account is locked"
-        );
-        _;
     }
 
     modifier notHalted() {
