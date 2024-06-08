@@ -30,5 +30,13 @@ unstake is only enabled when tokens are unlocked. Unlocked tokens don't earn mul
 So do we want to only allow unstaking all tokens? or leave an option for value?
 
 
+Mechanics of esZKSTR and why have it
+ - esZKSTR will be airdropped to incentivize user participation without token sell pressure
+ - esZKSTR is non-transferable token which represents staked amount of a user 
+ - it can only be minted or burned
+ - Whens someone stakes ZKSTR, they are minted proportional esZKSTR
+ - Reward calculation is based on balance of esZKSTR 
+ - When someone unstakes, the amount of esZKSTR is burned and ZKSTR is unlocked and the unlocked amount of APR is given out
+
 
 ////CAMPAIGN.SOL/////
