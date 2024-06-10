@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./EscrowToken.sol"; // USE INTERFACE
 
-// REVIEW: _msgSender from Context is not essentially required since we wont be dealing with meta-txs
-// REVIEW: we should store all the user specific details in a struct mapped to the user's address
+// REVIEW: _msgSender from Context is not essentially required since we wont be dealing with meta-txs ✅
+// REVIEW: we should store all the user specific details in a struct mapped to the user's address 🟩
 // REVIEW: need to discuss about the escrow or receipt token
 
 error InvalidDuration();
@@ -25,12 +25,12 @@ contract Staker is Context, Ownable {
 
     struct UserStakeDetails {
         uint256 lockedAmt;
-        uint256 totInterestAmt;
+        uint256 totInterestAmt; ❌//would anyways need to be calculated everytime based on current timestamp so why store it??
         uint256 lockedAt;
-        uint256 unlockAt;
+        uint256 unlockAt; ❌//based on locked At and locked For, so why store it?
         uint256 lockedFor;
-        uint256 apr;
-    }
+        uint256 apr; ❌//based on lockedFor, and APR can be updated, so why store a fixed value?
+    } //didn't add struct because it needs to be loaded in memory while reading or storage while updating
 
     enum Duration {
         Days_30,
@@ -48,9 +48,10 @@ contract Staker is Context, Ownable {
     mapping(address => uint256) private _lockTime; //when user started staking
     mapping(address => uint256) private _lockDuration; //duration of user staking
     mapping(address => uint256) private _lastRewardsClaim; //when the user last claimed their rewards
-    uint256[] private _multipliers; // [10, 15, 20, 35]  // REVIEW: USE MAPPING INSTEAD OF ARRAY
-    uint256[] private _aprs; //different APRs for different stake duration // REVIEW: USE MAPPING INSTEAD OF ARRAY
-    uint256 private reward_balance; //also add penalized tokens to reward balance
+    uint256[] private _multipliers; // [10, 15, 20, 35]  // REVIEW: USE MAPPING INSTEAD OF ARRAY ❌ (Why? if we are using ENUM for duration, we can't edit that anyways, so the array size would be fixed) 
+    // and we would need a function for multiplier because default mapping value would be 0 (duration:uint256=>multiplier:uin256) so we need to handle the case if 0 is returns
+    uint256[] private _aprs; //different APRs for different stake duration // REVIEW: USE MAPPING INSTEAD OF ARRAY ❌ (Why? if we are using ENUM for duration, we can't edit that anyways, so the array size would be fixed)
+    uint256 private reward_balance; //also add penalized tokens to reward balance 🟩 it is being added already
     bool private halted;
 
     event Stake(
@@ -78,7 +79,8 @@ contract Staker is Context, Ownable {
      */
     //
     function stakedBalance(address account) public view returns (uint256) {
-        return _escrowToken.balanceOf(account); // REVIEW: THIS IS ACTUALLY A WRONG WAY TO FETCH THE STAKED BALANCE
+        return _escrowToken.balanceOf(account); // REVIEW: THIS IS ACTUALLY A WRONG WAY TO FETCH THE STAKED BALANCE ❌
+        // why? escrowToken transfers are off, so it can only be minted or burned, thus it will always be correlated to stake balance
     }
 
     /**
@@ -123,7 +125,7 @@ contract Staker is Context, Ownable {
      * @notice - Access control: Public.
      * @return - apr based on locked duration of a user
      */
-    // REVIEW: Need to update this method to use mapping
+    // REVIEW: Need to update this method to use mapping ❌ why mapping?
     function user_apr(address account) public view returns (uint256) {
         uint256 lockDuration = _lockDuration[account];
         if (lockDuration == 30 days) {
@@ -175,10 +177,10 @@ contract Staker is Context, Ownable {
 
         _updateInterest(msg.sender);
 
-        // REVIEW: value can never be less than zero since the type is uint256.
-        if (value <= 0) {
-            revert InvalidStakeAmount(value);
-        }
+        // REVIEW: value can never be less than zero since the type is uint256. ✅
+        // if (value <= 0) {
+        //     revert InvalidStakeAmount(value);
+        // }
 
         uint256 timeDuration = duration_to_time(duration);
         // uint256 unlock_time = unlockTime(_msgSender());
@@ -266,6 +268,7 @@ contract Staker is Context, Ownable {
                 }
             }
 
+            //THIS IS ALSO CORRECT ✅
             if (currentTime < unlockTime) {
                 uint256 halfWayPoint = lockStartTime + (lockDuration / 2);
                 if (currentTime <= halfWayPoint) {
@@ -287,6 +290,7 @@ contract Staker is Context, Ownable {
             }
         }
 
+        // What if totInterestAmt is not available in reward_balance?❌
         unstakeAmount += userStakeDetails.totInterestAmt;
 
         userStakeDetails.lockedAmt -= value;
@@ -321,6 +325,7 @@ contract Staker is Context, Ownable {
 
         _escrowToken.burn(_msgSender(), value);
         //transfer ZKSTR to the user with their accrued apr
+        //TODO: what is totalClaimableAmount????
         _token.safeTransfer(_msgSender(), totalClaimableAmount);
         emit Unstake(msg.sender, block.timestamp, unstakeAmount);
     }
