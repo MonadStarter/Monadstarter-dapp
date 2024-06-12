@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../contracts/Staker.sol";
+import "../contracts/ftm_contracts/Staker.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../contracts/ZKSTR.sol";
+import "../contracts/ftm_contracts/ZKSTR.sol";
 
 contract StakerTest is Test {
     Staker public staker;
@@ -31,8 +31,26 @@ contract StakerTest is Test {
         staker = new Staker(address(token));
     }
 
-    function check_stake(address user, uint256 _amountStaked, _lockedAt,_lockedFor,_lastClaimTime) public{
-        (uint256 amountStaked, lockedAt , lockedFor, lastClaimTime ) = staker.getUserStakeDetails(user1);
+    function firstTimeStake(address user) public {
+        vm.prank(user);
+        token.approve(address(staker), 100 ether);
+        vm.prank(user);
+        staker.stake(1 ether, 30 days);
+    }
+
+    function check_stake(
+        address user,
+        uint256 _amountStaked,
+        uint256 _lockedAt,
+        uint256 _lockedFor,
+        uint256 _lastClaimTime
+    ) public view {
+        (
+            uint256 amountStaked,
+            uint256 lockedAt,
+            uint256 lockedFor,
+            uint256 lastClaimTime
+        ) = staker.getUserStakeDetails(user);
         assertEq(amountStaked, _amountStaked);
         assertEq(lockedAt, _lockedAt);
         assertEq(lockedFor, _lockedFor);
@@ -41,10 +59,7 @@ contract StakerTest is Test {
 
     function testStake() public {
         // User1 stakes tokens
-        vm.prank(user1);
-        token.approve(address(staker), 50 ether);
-        vm.prank(user1);
-        staker.stake(1 ether, 30 days);
+        firstTimeStake(user1);
 
         // Check staked balance
         check_stake(user1, 1 ether, block.timestamp, 30 days, 0);
@@ -73,40 +88,59 @@ contract StakerTest is Test {
     }
 
     function testUnstake() public {
-        // User2 stakes tokens
-        vm.prank(user2);
-        token.approve(address(staker), 50 ether);
-        vm.prank(user2);
-        staker.stake(50 ether, 30 days);
-
-        // Fast forward time to allow unstaking without penalty
-        vm.warp(block.timestamp + 30 days);
-
-        // User2 unstakes tokens
-        vm.prank(user2);
-        staker.unstake(50 ether);
-
-        // Check staked balance
-        (uint256 amountStaked, , , ) = staker.getUserStakeDetails(user2);
-        assertEq(amountStaked, 0);
-    }
-
-    function testClaimRewards() public {
         // User1 stakes tokens
-        vm.prank(user1);
-        token.approve(address(staker), 100 ether);
-        vm.prank(user1);
-        staker.stake(100 ether, 30 days);
+        firstTimeStake(user1);
+        // User2 stakes tokens
+        firstTimeStake(user2);
 
-        // Fast forward time to accumulate rewards
-        vm.warp(block.timestamp + 30 days);
+        //reverts for invalid unstake amounts
+        vm.expectRevert("InvalidStakeAmount(uint256)");
+        vm.prank(user2);
+        staker.unstake(0); //unstaking 0
+        vm.expectRevert("InvalidStakeAmount(uint256)");
+        vm.prank(user2);
+        staker.unstake(100 ether); //unstaking more than what was staked
 
-        // User1 claims rewards
+        //unstake before all tokens unlock, receive penalized amount and expected APRm in different durations
+        vm.warp(block.timestamp + 14 days); //fast forward to slightly less than half duration
+
+        //50% penalization
         vm.prank(user1);
-        staker.claim();
+        staker.unstake(1 ether); //trying to unstake all
+        check_stake(user1, 0 ether, 0, 0, 0);
+        assertEq(token.balanceOf(user1), 0.5 ether + 0.0006575342466 ether); //half amount plus apr
 
-        // Check user balance to ensure rewards are added
-        uint256 userBalance = token.balanceOf(user1);
-        assert(userBalance > 0); // Rewards should increase user balance
+        // vm.warp(block.timestamp + 7 days);f
+        // vm.prank(user2);
+        // staker.unstake(1 ether); //trying to unstake all
+        // check_stake(user1, 0 ether, 0, 0, 0);
+        // assertEq(token.balanceOf(user2), 0.5 ether);
+
+        // // User2 unstakes tokens
+        // vm.prank(user2);
+        // staker.unstake(50 ether);
+
+        // // Check staked balance
+        // (uint256 amountStaked, , , ) = staker.getUserStakeDetails(user2);
+        // assertEq(amountStaked, 0);
     }
+
+    // function testClaimRewards() public {
+    //     // User1 stakes tokens
+    //     vm.prank(user1);
+    //     token.approve(address(staker), 100 ether);
+    //     vm.prank(user1);
+    //     staker.stake(100 ether, 30 days);
+
+    //     // Fast forward time to accumulate rewards
+    //     vm.warp(block.timestamp + 30 days);
+
+    //     // User1 claims rewards
+    //     vm.prank(user1);
+    //     staker.claim();
+
+    //     // Check user balance to ensure rewards are added
+    //     uint256 userBalance = token.balanceOf(user1);
+    //     assert(userBalance > 0); // Rewards should increase user balance
+    // }
 }

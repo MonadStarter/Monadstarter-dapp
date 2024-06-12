@@ -29,15 +29,15 @@ contract Staker is Context, Ownable {
     }
 
     IERC20 _token; //ZKSTR
-    
+
     mapping(address => UserStakeDetails) private _userMapping;
-    
+
     // duration to multiplier
-    mapping(uint256=>uint256) private _multipliers;
+    mapping(uint256 => uint256) private _multipliers;
     //duration to apr
-    mapping(uint256=>uint256) private _aprs;
+    mapping(uint256 => uint256) private _aprs;
     //staked token amount to tier pool weigth
-    mapping(uint256=>uint256) private _tierWeight;
+    mapping(uint256 => uint256) private _tierWeight;
 
     uint256 private reward_balance;
     bool private halted;
@@ -49,14 +49,19 @@ contract Staker is Context, Ownable {
         uint256 value
     );
 
-    event Unstake(address indexed account, uint256 timestamp, uint256 value, uint256 unstaked);
+    event Unstake(
+        address indexed account,
+        uint256 timestamp,
+        uint256 value,
+        uint256 unstaked
+    );
     event RewardsFunded(address indexed funder, uint256 amount);
     event Claim(address indexed account, uint256 timestamp, uint256 reward);
     event MultiplierUpdated(uint256[] indexed new_multipliers);
 
-    constructor(address tokenAddress) Ownable() {
+    constructor(address tokenAddress) Ownable(msg.sender) {
         _token = IERC20(tokenAddress);
-        
+
         //default multipliers of 1x,1.5x,2x and 3.5x
         _multipliers[30 days] = 10;
         _multipliers[60 days] = 15;
@@ -70,11 +75,11 @@ contract Staker is Context, Ownable {
         _aprs[180 days] = 700;
 
         //default Tier Weight values for different stake amounts [10,18,30,50,100]
-        _tierWeight[30,000] = 10;
-        _tierWeight[75,000] = 18;
-        _tierWeight[250,000] = 30;
-        _tierWeight[500,000] = 50;
-        _tierWeight[1,000,000] = 100;
+        _tierWeight[30_000] = 10;
+        _tierWeight[75_000] = 18;
+        _tierWeight[250_000] = 30;
+        _tierWeight[500_000] = 50;
+        _tierWeight[1_000_000] = 100;
     }
 
     /**
@@ -84,8 +89,8 @@ contract Staker is Context, Ownable {
      */
     //
     function stakedBalance(address account) external view returns (uint256) {
-        UserStakeDetails memory userStakeDetails = _userMapping[msg.sender];
-        return userStakeDetails.amountStaked;  
+        UserStakeDetails memory userStakeDetails = _userMapping[account];
+        return userStakeDetails.amountStaked;
     }
 
     /**
@@ -95,7 +100,7 @@ contract Staker is Context, Ownable {
      */
     function unlockTime(address account) external view returns (uint256) {
         UserStakeDetails memory userStakeDetails = _userMapping[account];
-        return userStakeDetails.lockedAt + userStakeDetails.lockedFor
+        return userStakeDetails.lockedAt + userStakeDetails.lockedFor;
     }
 
     /**
@@ -103,7 +108,9 @@ contract Staker is Context, Ownable {
      * @notice - Access control: External.
      * @return - the amount of tokens user has staked, when user locked tokens, how long they locked for, when user last claimed APR.
      */
-    function getUserStakeDetails(address user) external view returns (uint256, uint256, uint256, uint256) {
+    function getUserStakeDetails(
+        address user
+    ) external view returns (uint256, uint256, uint256, uint256) {
         UserStakeDetails memory details = _userMapping[user];
         return (
             details.amountStaked,
@@ -130,7 +137,7 @@ contract Staker is Context, Ownable {
      */
     function getAPR(uint256 duration) public view returns (uint256) {
         uint256 apr = _aprs[duration];
-        if (apr == 0){
+        if (apr == 0) {
             revert InvalidDuration(duration);
         }
         return apr;
@@ -138,7 +145,7 @@ contract Staker is Context, Ownable {
 
     function getTierWeight(uint256 amount) external view returns (uint256) {
         uint256 tierWeight = _tierWeight[amount];
-        if (tierWeight == 0){
+        if (tierWeight == 0) {
             revert InvalidAmount(amount);
         }
         return tierWeight;
@@ -151,14 +158,14 @@ contract Staker is Context, Ownable {
      */
 
     function getMultiplier(uint256 duration) external view returns (uint256) {
-        // TODO: handle this case in some other function 
+        // TODO: handle this case in some other function
         //if the user tokens are unlocked, they don't earn a multiplier
         // if (unlockTime(account) < block.timestamp) {
         //     revert NotStaked(account);
         // }
 
         uint256 multiplier = _multipliers[duration];
-        if (multiplier == 0){
+        if (multiplier == 0) {
             revert InvalidDuration(duration);
         }
         return multiplier;
@@ -173,7 +180,8 @@ contract Staker is Context, Ownable {
         _check_duration(duration);
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
 
-        uint256 oldUnlockAt = userStakeDetails.lockedAt + userStakeDetails.lockedFor;        
+        uint256 oldUnlockAt = userStakeDetails.lockedAt +
+            userStakeDetails.lockedFor;
         uint256 newUnlockAt = duration + block.timestamp; // x number of days from now
 
         if (newUnlockAt <= oldUnlockAt) {
@@ -184,10 +192,9 @@ contract Staker is Context, Ownable {
         _token.safeTransferFrom(msg.sender, address(this), value);
         userStakeDetails.lockedAt = block.timestamp; //resets the lock time if user had staked before
         userStakeDetails.lockedFor = duration;
-        
+
         emit Stake(_msgSender(), block.timestamp, duration, value);
     }
-
 
     /**
      * @dev unstakes the value amount of tokens if enough balance and tokens are unlocked.
@@ -201,18 +208,18 @@ contract Staker is Context, Ownable {
     function unstake(uint256 value) external {
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
 
-        if (value == 0 || value > userStakeDetails.amountStaked){
+        if (value == 0 || value > userStakeDetails.amountStaked) {
             revert InvalidStakeAmount(value);
         }
 
         uint256 lockStartTime = userStakeDetails.lockedAt;
         uint256 lockDuration = userStakeDetails.lockedFor;
-        uint256 unlockTime = lockStartTime + lockDuration;
+        uint256 unlock_time = lockStartTime + lockDuration;
         uint256 currentTime = block.timestamp;
 
         uint256 unstakeAmount = value;
 
-        if (currentTime < unlockTime) {
+        if (currentTime < unlock_time) {
             uint256 halfWayPoint = lockStartTime + (lockDuration / 2);
             if (currentTime <= halfWayPoint) {
                 unstakeAmount = (value * 50) / 100; // Applying a 50% penalization for unstaking before the halfway point
@@ -232,20 +239,25 @@ contract Staker is Context, Ownable {
             }
         }
 
-        uint256 apr_rewards = calculateRewards(userStakeDetails.amountStaked, lockStartTime, lockDuration, userStakeDetails.lastClaimTime);
-        
+        uint256 apr_rewards = calculateRewards(
+            userStakeDetails.amountStaked,
+            lockStartTime,
+            lockDuration,
+            userStakeDetails.lastClaimTime
+        );
+
         // Add the penalty to the reward balance, this will be recycled as additional staker APR
-        reward_balance += (value - unstakeAmount); 
+        reward_balance += (value - unstakeAmount);
 
         userStakeDetails.amountStaked -= value;
-        
+
         if (userStakeDetails.amountStaked == 0) {
             userStakeDetails.lockedFor = 0;
             userStakeDetails.lockedAt = 0;
         }
 
         // if we have rewards to give to the user, add the rewards to unstakeAmount
-        if (reward_balance >= apr_rewards){
+        if (reward_balance >= apr_rewards) {
             //reduce the apr_reward from the total reward balance
             reward_balance -= apr_rewards;
             // add the reward to user unstakeAmount
@@ -254,7 +266,6 @@ contract Staker is Context, Ownable {
             userStakeDetails.lastClaimTime = block.timestamp;
         }
 
-        
         _token.safeTransfer(msg.sender, unstakeAmount);
         emit Unstake(msg.sender, block.timestamp, value, unstakeAmount);
     }
@@ -266,8 +277,13 @@ contract Staker is Context, Ownable {
      */
     function claim() external {
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
-        uint256 apr_rewards = calculateRewards(userStakeDetails.amountStaked, userStakeDetails.lockedAt, userStakeDetails.lockedFor, userStakeDetails.lastClaimTime);
-        
+        uint256 apr_rewards = calculateRewards(
+            userStakeDetails.amountStaked,
+            userStakeDetails.lockedAt,
+            userStakeDetails.lockedFor,
+            userStakeDetails.lastClaimTime
+        );
+
         if (apr_rewards <= 0) {
             revert NoRewardsToClaim(msg.sender);
         }
@@ -291,7 +307,12 @@ contract Staker is Context, Ownable {
      */
     //TODO: make sure the decimal math is right
     // @note: this will still work if pool has no money, do we want to revert or leave?
-    function calculateRewards(uint256 amountStaked, uint256 lockedAt, uint256 lockedFor, uint256 lastClaimTime) public view returns (uint256) {
+    function calculateRewards(
+        uint256 amountStaked,
+        uint256 lockedAt,
+        uint256 lockedFor,
+        uint256 lastClaimTime
+    ) public view returns (uint256) {
         uint256 apr = getAPR(lockedFor);
 
         // if user has not claimed, lastRewardsClaim would be 0 otherwise it would be last blocktime when they claimed
@@ -309,13 +330,15 @@ contract Staker is Context, Ownable {
 
     //REVIEW: what was the virtual interest and total interest part?
     function getTotalInterestAccrued(
-    address user
+        address user
     ) external view returns (uint256 totalInterest) {
         UserStakeDetails memory userStakeDetails = _userMapping[user];
         uint256 apr = getAPR(userStakeDetails.lockedFor);
         uint256 timeElapsed = block.timestamp - userStakeDetails.lockedAt;
-        
-        totalInterest = (userStakeDetails.amountStaked * apr * timeElapsed) / (365 days * 100);
+
+        totalInterest =
+            (userStakeDetails.amountStaked * apr * timeElapsed) /
+            (365 days * 100);
     }
 
     /**
@@ -328,15 +351,21 @@ contract Staker is Context, Ownable {
         uint256 _totalAmount,
         uint256 _lockDuration
     ) external onlyOwner {
-        require(_addresses.length == _amounts.length, "Array lengths do not match");
-        _check_duration(_lock_duration);
+        require(
+            _addresses.length == _amounts.length,
+            "Array lengths do not match"
+        );
+        _check_duration(_lockDuration);
         // Transfer the total amount to this contract
-        require(_token.transferFrom(msg.sender, address(this), _totalAmount), "Transfer failed");
+        require(
+            _token.transferFrom(msg.sender, address(this), _totalAmount),
+            "Transfer failed"
+        );
 
         for (uint256 i = 0; i < _addresses.length; i++) {
             address user = _addresses[i];
             uint256 amount = _amounts[i];
-            
+
             // Update the user's staking details
             _userMapping[user] = UserStakeDetails({
                 lockedAt: block.timestamp,
@@ -347,16 +376,26 @@ contract Staker is Context, Ownable {
         }
     }
 
-    function _check_duration(uint256 duration) private pure{
-        require(duration == 30 days || duration == 60 days || duration == 90 days || duration == 180 days, InvalidDuration(duration));
+    function _check_duration(uint256 duration) private pure {
+        if (
+            duration != 30 days ||
+            duration != 60 days ||
+            duration != 90 days ||
+            duration != 180 days
+        ) {
+            revert InvalidDuration(duration);
+        }
     }
 
     /**
      * @dev to set the multipliers array. add values in whole decimals
      * @notice - Access control: onlyOwner, they can change the multiplier anytime
      */
-    function set_multiplier(uint256 duration, uint256 multiplier) external onlyOwner {
-        _multipliers[duration] = multiplier
+    function set_multiplier(
+        uint256 duration,
+        uint256 multiplier
+    ) external onlyOwner {
+        _multipliers[duration] = multiplier;
     }
 
     /**
@@ -380,7 +419,7 @@ contract Staker is Context, Ownable {
         _token.safeTransfer(_msgSender(), value);
     }
 
-    function notHalted() private {
+    modifier notHalted() {
         if (halted) {
             revert Halted();
         }
