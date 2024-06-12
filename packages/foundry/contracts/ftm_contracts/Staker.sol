@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 error InvalidDuration(uint256 duration);
 error InvalidAmount(uint256 amount);
-error NotStaked(address account);
+error NotStaked(address accountff);
 error InvalidStakeAmount(uint256 amount);
 error NoRewardsToClaim(address account);
 error NoRewardsInTressury();
