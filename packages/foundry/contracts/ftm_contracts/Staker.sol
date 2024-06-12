@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+//TODO: remove console
+import "forge-std/console.sol";
+
 error InvalidDuration(uint256 duration);
 error InvalidAmount(uint256 amount);
 error NotStaked(address accountff);
@@ -190,6 +193,7 @@ contract Staker is Context, Ownable {
 
         //perform staking and locking
         _token.safeTransferFrom(msg.sender, address(this), value);
+        userStakeDetails.amountStaked += value;
         userStakeDetails.lockedAt = block.timestamp; //resets the lock time if user had staked before
         userStakeDetails.lockedFor = duration;
 
@@ -378,9 +382,9 @@ contract Staker is Context, Ownable {
 
     function _check_duration(uint256 duration) private pure {
         if (
-            duration != 30 days ||
-            duration != 60 days ||
-            duration != 90 days ||
+            duration != 30 days &&
+            duration != 60 days &&
+            duration != 90 days &&
             duration != 180 days
         ) {
             revert InvalidDuration(duration);

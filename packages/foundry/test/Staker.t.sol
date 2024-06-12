@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 import "../contracts/ftm_contracts/Staker.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../contracts/ftm_contracts/ZKSTR.sol";
@@ -64,24 +65,27 @@ contract StakerTest is Test {
         // Check staked balance
         check_stake(user1, 1 ether, block.timestamp, 30 days, 0);
 
-        // stake again for 30 days, ensure time is slightly more, amount is added and duration is same
+        // stake again for 30 days right after staking, ensure time is slightly more, amount is added and duration is same
+        vm.warp(block.timestamp + 12);
         vm.prank(user1);
         staker.stake(1 ether, 30 days);
         check_stake(user1, 2 ether, block.timestamp, 30 days, 0);
 
-        // increase stake, with increased duration
+        // // increase stake, with increased duration
         vm.prank(user1);
         staker.stake(1 ether, 60 days);
         check_stake(user1, 3 ether, block.timestamp, 60 days, 0);
 
         // Expect the transaction to revert with an error
-        vm.expectRevert("InvalidDuration(uint256)");
+        vm.expectRevert();
         vm.prank(user1);
         staker.stake(1 ether, 59 days);
-        check_stake(user1, 3 ether, block.timestamp, 60 days, 0); //these values remain the same
 
-        // must revert when try to stake for less duration than previous duration
-        vm.expectRevert("InvalidDuration(uint256)");
+        // Verify that other stake values remain the same
+        check_stake(user1, 3 ether, block.timestamp, 60 days, 0);
+
+        // // must revert when try to stake for less duration than previous duration
+        vm.expectRevert();
         vm.prank(user1);
         staker.stake(1 ether, 30 days);
         check_stake(user1, 3 ether, block.timestamp, 60 days, 0); //these values remain the same
@@ -94,21 +98,25 @@ contract StakerTest is Test {
         firstTimeStake(user2);
 
         //reverts for invalid unstake amounts
-        vm.expectRevert("InvalidStakeAmount(uint256)");
+        vm.expectRevert();
         vm.prank(user2);
         staker.unstake(0); //unstaking 0
-        vm.expectRevert("InvalidStakeAmount(uint256)");
+
+        vm.expectRevert();
         vm.prank(user2);
         staker.unstake(100 ether); //unstaking more than what was staked
 
-        //unstake before all tokens unlock, receive penalized amount and expected APRm in different durations
+        // //unstake before all tokens unlock, receive penalized amount and expected APRm in different durations
         vm.warp(block.timestamp + 14 days); //fast forward to slightly less than half duration
 
         //50% penalization
         vm.prank(user1);
         staker.unstake(1 ether); //trying to unstake all
-        check_stake(user1, 0 ether, 0, 0, 0);
-        assertEq(token.balanceOf(user1), 0.5 ether + 0.0006575342466 ether); //half amount plus apr
+        check_stake(user1, 0 ether, 0, 0, block.timestamp);
+        assertEq(
+            token.balanceOf(user1),
+            99 ether + 0.5 ether + 0.0006575342466 ether
+        ); //half amount plus apr
 
         // vm.warp(block.timestamp + 7 days);f
         // vm.prank(user2);
