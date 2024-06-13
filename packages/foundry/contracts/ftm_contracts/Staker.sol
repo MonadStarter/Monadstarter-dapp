@@ -266,6 +266,7 @@ contract Staker is Context, Ownable {
             reward_balance -= apr_rewards;
             // add the reward to user unstakeAmount
             unstakeAmount += apr_rewards;
+
             //update the last time user claimed rewards
             userStakeDetails.lastClaimTime = block.timestamp;
         }
@@ -328,8 +329,8 @@ contract Staker is Context, Ownable {
             // Calculate from the last claim time
             duration_time = block.timestamp - lastClaimTime;
         }
-
-        return (amountStaked * apr * duration_time) / (365 days * 100);
+        // changed to 100_00 after tests
+        return (amountStaked * apr * duration_time) / (365 days * 100_00);
     }
 
     //REVIEW: what was the virtual interest and total interest part?

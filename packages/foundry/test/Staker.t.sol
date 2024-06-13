@@ -32,6 +32,16 @@ contract StakerTest is Test {
         staker = new Staker(address(token));
     }
 
+    function unstake_value_after_penalty(
+        uint256 value,
+        uint256 stakedFor,
+        uint256 lockedFor
+    ) public returns (uint256) {
+        uint256 ratio = 50 +
+            ((50 * (stakedFor - (lockedFor / 2))) / (lockedFor / 2));
+        return (value * ratio) / 100;
+    }
+
     function firstTimeStake(address user) public {
         vm.prank(user);
         token.approve(address(staker), 100 ether);
@@ -91,11 +101,99 @@ contract StakerTest is Test {
         check_stake(user1, 3 ether, block.timestamp, 60 days, 0); //these values remain the same
     }
 
-    function testUnstake() public {
+    //no penalization
+    function testUnstake_noPenalization() public {
         // User1 stakes tokens
-        firstTimeStake(user1);
+        firstTimeStake(user1); //user 1 has 99 E, staked 1 E
         // User2 stakes tokens
-        firstTimeStake(user2);
+        firstTimeStake(user2); //user 1 has 99 E, staked 1 E
+
+        //reverts for invalid unstake amounts
+        vm.expectRevert();
+        vm.prank(user2);
+        staker.unstake(0); //unstaking 0
+
+        vm.expectRevert();
+        vm.prank(user2);
+        staker.unstake(100 ether); //unstaking more than what was staked
+
+        // //unstake before all tokens unlock, receive penalized amount and expected APRm in different durations
+        vm.warp(block.timestamp + 30 days); //fast forward to slightly less than half duration
+
+        vm.prank(user1);
+        staker.unstake(1 ether); //trying to unstake all
+        check_stake(user1, 0 ether, 0, 0, 0);
+        assertEq(token.balanceOf(user1), 100 ether); //no APR because not rewards not funded or penalized
+
+        //adding rewards
+        token.approve(address(staker), 100 ether);
+        staker.fund_rewards(1 ether);
+        vm.prank(user2);
+        staker.unstake(1 ether); //trying to unstake all
+        check_stake(user2, 0 ether, 0, 0, block.timestamp);
+        assertApproxEqAbs(
+            token.balanceOf(user2),
+            100 ether + 0.00082 ether,
+            0.00001 ether
+        );
+        // assertEq(token.balanceOf(user2), 100 ether + 0.00082);
+
+        //both users details should be reset because they unstaked all
+        vm.prank(user1);
+        staker.stake(3 ether, 90 days);
+        vm.prank(user2);
+        staker.stake(3 ether, 180 days);
+
+        //increasing time to more than 90 days to see if user1 gets more APR and is able to unstake all tokens
+        vm.warp(block.timestamp + 120 days);
+        vm.prank(user1);
+        staker.unstake(1 ether); //trying to unstake only 1/3
+        check_stake(
+            user1,
+            2 ether,
+            block.timestamp - 120 days,
+            90 days,
+            block.timestamp
+        );
+
+        //apr for year should 5% and reward should be 0.04931...
+        assertApproxEqAbs(
+            token.balanceOf(user1),
+            98 ether + 0.04931 ether,
+            0.001 ether
+        );
+
+        vm.warp(block.timestamp + 60 days);
+        vm.prank(user1);
+        staker.unstake(2 ether); // unstaking rest: 2/3
+        check_stake(user1, 0 ether, 0, 0, block.timestamp);
+
+        //apr for year should 5% and reward should be 0.04931...
+        assertApproxEqAbs(
+            token.balanceOf(user1),
+            //prev apr + current apr
+            100 ether + 0.04931 ether + 0.01643835616 ether,
+            0.0001 ether
+        );
+
+        vm.prank(user2);
+        staker.unstake(3 ether); // unstaking all
+        check_stake(user2, 0 ether, 0, 0, block.timestamp);
+
+        //apr for year should 5% and reward should be 0.04931...
+        assertApproxEqAbs(
+            token.balanceOf(user2),
+            //prev apr + current apr
+            100 ether + 0.00082 ether + 0.1035616438 ether,
+            0.0001 ether
+        );
+    }
+
+    function testUnstake_Penalization() public {
+        // User1 stakes tokens
+        firstTimeStake(user1); //user 1 has 99 E, staked 1 E
+        // User2 stakes tokens
+        firstTimeStake(user2); //user 1 has 99 E, staked 1 E
 
         //reverts for invalid unstake amounts
         vm.expectRevert();
@@ -113,16 +211,24 @@ contract StakerTest is Test {
         vm.prank(user1);
         staker.unstake(1 ether); //trying to unstake all
         check_stake(user1, 0 ether, 0, 0, block.timestamp);
-        assertEq(
-            token.balanceOf(user1),
-            99 ether + 0.5 ether + 0.0006575342466 ether
-        ); //half amount plus apr
+        assertApproxEqAbs(
+            token.balanceOf(user1), // 99 + 0.5 + apr
+            99 ether + 0.5 ether + 0.000383 ether,
+            0.00001 ether
+        ); //half amount plus apr, APR comes from penalization
 
-        // vm.warp(block.timestamp + 7 days);f
-        // vm.prank(user2);
-        // staker.unstake(1 ether); //trying to unstake all
-        // check_stake(user1, 0 ether, 0, 0, 0);
-        // assertEq(token.balanceOf(user2), 0.5 ether);
+        vm.warp(block.timestamp + 7 days);
+        vm.prank(user2);
+        staker.unstake(1 ether); //trying to unstake all, must unstake based on linear function
+        check_stake(user2, 0 ether, 0, 0, block.timestamp);
+
+        assertApproxEqAbs(
+            token.balanceOf(user2),
+            99 ether +
+                unstake_value_after_penalty(1 ether, 21 days, 30 days) +
+                0.000575 ether,
+            0.00001 ether
+        );
 
         // // User2 unstakes tokens
         // vm.prank(user2);
@@ -131,6 +237,8 @@ contract StakerTest is Test {
         // // Check staked balance
         // (uint256 amountStaked, , , ) = staker.getUserStakeDetails(user2);
         // assertEq(amountStaked, 0);
+
+        //when reward balance is available, when it's not
     }
 
     // function testClaimRewards() public {
