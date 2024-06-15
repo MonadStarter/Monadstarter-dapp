@@ -1,42 +1,4 @@
-//Multiplier
-// There is no function to select stake duration in staker.sol
-// add a enum so there are only 4 staking options
-
-
-//Native Token
-// most functions use msg.sender so native token, we need it to use any ERC20
-
-
-// Tiers
-In current contract, each campaign has different tier and amount requirements, instead we should keep it simple
-Move the tier code to the staker contract.
-
-Add tier in staker contract
-
-// Lock
-The current lock only allows IDOs to lock tokens (so that owner doesnt' run away with money)
-check addIDO and onlyIDO in staker.
-
-// when lock ends, do people still earn the multiplier if they don't unstake? For now they don't, the multiplier function returns default value of 1
-
-// Staking
-should take duration as a parameter. Only allow user to stake for 1 duration.
-If they staked x for 30 days and want to stake y for 90 days, they need to move 30 days fund to extra 90
-so it all unlocks together and multiplier is easier to calcualte
-Uesrs can increase stake time but can't decrease it
-
-//Unstake
-unstake is only enabled when tokens are unlocked. Unlocked tokens don't earn multiplier
-So do we want to only allow unstaking all tokens? or leave an option for value?
-
-
-Mechanics of esZKSTR and why have it
- - esZKSTR will be airdropped to incentivize user participation without token sell pressure
- - esZKSTR is non-transferable token which represents staked amount of a user 
- - it can only be minted or burned
- - Whens someone stakes ZKSTR, they are minted proportional esZKSTR
- - Reward calculation is based on balance of esZKSTR 
- - When someone unstakes, the amount of esZKSTR is burned and ZKSTR is unlocked and the unlocked amount of APR is given out
-
-
 ////CAMPAIGN.SOL/////
+when user registers for a campaign, we use the staker contract to get their 
+multiplier and tier. If user chooses to unstake or lose their tier, they would still retain the multiplier and tier for the registered campaign.
+

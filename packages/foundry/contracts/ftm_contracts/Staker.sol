@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import "./IStaker.sol";
 //TODO: remove console
 import "forge-std/console.sol";
 
@@ -20,7 +20,8 @@ error Halted();
 //TODO: make sure rewards calculation and decimals are correct
 //TODO: ensure the token approvals when they are required
 //TODO: Tests
-contract Staker is Context, Ownable {
+
+contract Staker is IStaker, Context, Ownable {
     using Address for address;
     using SafeERC20 for IERC20;
 
@@ -39,8 +40,9 @@ contract Staker is Context, Ownable {
     mapping(uint256 => uint256) private _multipliers;
     //duration to apr
     mapping(uint256 => uint256) private _aprs;
-    //staked token amount to tier pool weigth
-    mapping(uint256 => uint256) private _tierWeight;
+    // stores minimum amount of tokens required for each tier index
+    uint256[5] _tierIndex;
+    //mapping(uint256 => uint256) private _tierIndex;
 
     uint256 private reward_balance;
     bool private halted;
@@ -77,12 +79,12 @@ contract Staker is Context, Ownable {
         _aprs[90 days] = 500;
         _aprs[180 days] = 700;
 
-        //default Tier Weight values for different stake amounts [10,18,30,50,100]
-        _tierWeight[30_000] = 10;
-        _tierWeight[75_000] = 18;
-        _tierWeight[250_000] = 30;
-        _tierWeight[500_000] = 50;
-        _tierWeight[1_000_000] = 100;
+        //minimum tokens required for each tier index
+        _tierIndex[0] = 30_000;
+        _tierIndex[1] = 75_000;
+        _tierIndex[2] = 250_000;
+        _tierIndex[3] = 500_000;
+        _tierIndex[4] = 1_000_000;
     }
 
     /**
@@ -146,12 +148,13 @@ contract Staker is Context, Ownable {
         return apr;
     }
 
-    function getTierWeight(uint256 amount) external view returns (uint256) {
-        uint256 tierWeight = _tierWeight[amount];
-        if (tierWeight == 0) {
-            revert InvalidAmount(amount);
+    function getTierIndex(uint256 amount) external view returns (uint256) {
+        for (uint256 i = 0; i < _tierIndex.length; i++) {
+            if (amount < _tierIndex[i]) {
+                return i;
+            }
         }
-        return tierWeight;
+        return _tierIndex.length;
     }
 
     /**
@@ -178,7 +181,7 @@ contract Staker is Context, Ownable {
      * @dev Stakes and locks the token for the given duration
      * @notice - Access control: External. Can only be called when app is nothalted
      */
-
+    //REVIEW: do we need to force minimum amount of stake? so they atleast come under tear 1
     function stake(uint256 value, uint256 duration) external notHalted {
         _check_duration(duration);
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
