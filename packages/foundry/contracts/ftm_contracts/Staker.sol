@@ -215,8 +215,13 @@ contract Staker is IStaker, Context, Ownable {
     function unstake(uint256 value) external {
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
 
-        if (value == 0 || value > userStakeDetails.amountStaked) {
-            revert InvalidStakeAmount(value);
+        if (value == 0) {
+            claim();
+            return;
+        }
+
+        if (value > userStakeDetails.amountStaked) {
+            revert InvalidAmount(value);
         }
 
         uint256 lockStartTime = userStakeDetails.lockedAt;
@@ -283,7 +288,7 @@ contract Staker is IStaker, Context, Ownable {
       The peanlized tokens go back to the contract and provide APR to stakers
      * @notice - Access control: External. Can be claimed anytime regardless of token unlocks
      */
-    function claim() external {
+    function claim() public {
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
         uint256 apr_rewards = calculateRewards(
             userStakeDetails.amountStaked,
