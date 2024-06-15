@@ -215,12 +215,13 @@ contract Staker is IStaker, Context, Ownable {
     function unstake(uint256 value) external {
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
 
-        if (value == 0) {
-            claim();
-            return;
-        }
+        //TODO: discuss
+        // if (value == 0) {
+        //     claim();
+        //     return;
+        // }
 
-        if (value > userStakeDetails.amountStaked) {
+        if (value == 0 || value > userStakeDetails.amountStaked) {
             revert InvalidAmount(value);
         }
 
