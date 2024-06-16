@@ -16,6 +16,7 @@ error CampaignNotRevoked();
 error CampaignRegistrationError();
 error UserRegistrationError();
 error CampaignNotLive();
+error NotInFCFS();
 
 contract Campaign is ReentrancyGuard {
     using Address for address;
@@ -354,7 +355,7 @@ contract Campaign is ReentrancyGuard {
             revert CampaignNotLive();
         }
 
-        if (userRegistered(account)){
+        if (!userRegistered(account)){
             revert UserRegistrationError();
         }
 
@@ -395,15 +396,27 @@ contract Campaign is ReentrancyGuard {
      */
     function buyFCFSTokens(uint256 value) external nonReentrant {
         payToken.safeTransferFrom(msg.sender, address(this), value);
+        if (!tokenFunded){
+            revert CampaignNotFunded();
+        }   
+        if (!isLive()){
+            revert CampaignNotLive();
+        }
 
-        require(tokenFunded, "Campaign is not funded yet");
-        require(isLive(), "Campaign is not live");
-        require(isInFCFS(), "Not in FCFS sale period");
+        if (!isInFCFS()){
+            revert NotInFCFS();
+        }
+        if (!userRegistered(account)){
+            revert UserRegistrationError();
+        }
+
         // require(userRegistered(msg.sender), "Not regisered");
 
         // Check for over purchase
-        require(value != 0, "Value Can't be 0");
-        require(value <= getRemaining(), "Insufficent token left");
+        if (value == 0 || value > getRemaining()){
+            revert InvalidAmount(value);
+        }
+        
         if (participants[msg.sender] == 0) {
             participantsList.push(msg.sender);
         }

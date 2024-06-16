@@ -215,20 +215,39 @@ contract Staker is IStaker, Context, Ownable {
     function unstake(uint256 value) external {
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
 
-        //TODO: discuss
-        // if (value == 0) {
-        //     claim();
-        //     return;
-        // }
-
-        if (value == 0 || value > userStakeDetails.amountStaked) {
+        if (value > userStakeDetails.amountStaked) {
             revert InvalidAmount(value);
         }
 
         uint256 lockStartTime = userStakeDetails.lockedAt;
         uint256 lockDuration = userStakeDetails.lockedFor;
-        uint256 unlock_time = lockStartTime + lockDuration;
+        uint256 unlock_time = lockStzseartTime + lockDuration;
         uint256 currentTime = block.timestamp;
+
+        uint256 apr_rewards = calculateRewards(
+            userStakeDetails.amountStaked,
+            lockStartTime,
+            lockDuration,
+            userStakeDetails.lastClaimTime
+        );
+
+        if (value == 0) {
+            if (apr_rewards <= 0) {
+                revert NoRewardsToClaim(msg.sender);
+            }
+
+            if (reward_balance < apr_rewards) {
+                revert NoRewardsInTressury();
+            }
+
+            reward_balance -= apr_rewards;
+            _token.safeTransfer(msg.sender, apr_rewards);
+            //update the last time user claimed rewards
+            userStakeDetails.lastClaimTime = block.timestamp;
+
+            emit Claim(msg.sender, block.timestamp, apr_rewards);
+            return;
+        }
 
         uint256 unstakeAmount = value;
 
@@ -251,13 +270,6 @@ contract Staker is IStaker, Context, Ownable {
                 unstakeAmount = (value * (100 - linearPenalty)) / 100;
             }
         }
-
-        uint256 apr_rewards = calculateRewards(
-            userStakeDetails.amountStaked,
-            lockStartTime,
-            lockDuration,
-            userStakeDetails.lastClaimTime
-        );
 
         // Add the penalty to the reward balance, this will be recycled as additional staker APR
         reward_balance += (value - unstakeAmount);
