@@ -164,12 +164,6 @@ contract Staker is IStaker, Context, Ownable {
      */
 
     function getMultiplier(uint256 duration) external view returns (uint256) {
-        // TODO: handle this case in some other function
-        //if the user tokens are unlocked, they don't earn a multiplier
-        // if (unlockTime(account) < block.timestamp) {
-        //     revert NotStaked(account);
-        // }
-
         uint256 multiplier = _multipliers[duration];
         if (multiplier == 0) {
             revert InvalidDuration(duration);
@@ -300,7 +294,7 @@ contract Staker is IStaker, Context, Ownable {
      * @dev claim apr rewards
       The peanlized tokens go back to the contract and provide APR to stakers
      * @notice - Access control: External. Can be claimed anytime regardless of token unlocks
-     */
+    //  */
     function claim() public {
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
         uint256 apr_rewards = calculateRewards(
@@ -355,17 +349,17 @@ contract Staker is IStaker, Context, Ownable {
     }
 
     //REVIEW: what was the virtual interest and total interest part?
-    function getTotalInterestAccrued(
-        address user
-    ) external view returns (uint256 totalInterest) {
-        UserStakeDetails memory userStakeDetails = _userMapping[user];
-        uint256 apr = getAPR(userStakeDetails.lockedFor);
-        uint256 timeElapsed = block.timestamp - userStakeDetails.lockedAt;
+    // function getTotalInterestAccrued(
+    //     address user
+    // ) external view returns (uint256 totalInterest) {
+    //     UserStakeDetails memory userStakeDetails = _userMapping[user];
+    //     uint256 apr = getAPR(userStakeDetails.lockedFor);
+    //     uint256 timeElapsed = block.timestamp - userStakeDetails.lockedAt;
 
-        totalInterest =
-            (userStakeDetails.amountStaked * apr * timeElapsed) /
-            (365 days * 100);
-    }
+    //     totalInterest =
+    //         (userStakeDetails.amountStaked * apr * timeElapsed) /
+    //         (365 days * 100);
+    // }
 
     /**
      * @dev Airdrop and stake ZKSTR

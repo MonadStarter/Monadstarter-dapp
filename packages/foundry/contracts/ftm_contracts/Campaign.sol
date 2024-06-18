@@ -17,6 +17,14 @@ error CampaignRegistrationError();
 error UserRegistrationError();
 error CampaignNotLive();
 error NotInFCFS();
+error PresaleCancelled();
+error SoftcapNotReached();
+error InPresale();
+error CampaignOver();
+error CampaignNotOver();
+error NotClaimable();
+error ClaimedAlready(address account);
+
 
 contract Campaign is ReentrancyGuard {
     using Address for address;
@@ -35,6 +43,7 @@ contract Campaign is ReentrancyGuard {
     uint256 public tokenLockTime; // probably don't need this
     IERC20 public payToken;
     address public staker;
+    address public feeAddress; //multisig of zk starter
 
     //TODO: also have max number of participants
     struct TierProfile {
@@ -44,8 +53,8 @@ contract Campaign is ReentrancyGuard {
     }
     mapping(uint256 => TierProfile) public indexToTier;
     uint256 public totalPoolShares; //TODO:what does this mean
-    uint256 public sharePriceInFTM; //TODO:what does this mean 
-    bool private isSharePriceSet; //TODO:what does this mean
+    uint256 public sharePriceInFTM; 
+    bool private isSharePriceSet; 
     address[] public participantsList;
 
     //TODO: can be in staker contract
@@ -118,6 +127,7 @@ contract Campaign is ReentrancyGuard {
         uint256[5] calldata _tierMinTokens,
         address _payToken,
         address _staker
+        address _feeAddress,
     ) external {
         //require(msg.sender == factory, "Only factory allowed to initialize");
         token = _token; //campaignToken
@@ -134,6 +144,7 @@ contract Campaign is ReentrancyGuard {
         tokenLockTime = _tokenLockTime; //TODO: might not need this, users should be able to specify this or we can pull from staker contract
         payToken = IERC20(_payToken);
         staker = _staker;
+        feeAddress = _feeAddress;
         for (uint256 i = 0; i < _tierWeights.length; i++) {
             indexToTier[i + 1] = TierProfile(
                 _tierWeights[i],
@@ -223,7 +234,7 @@ contract Campaign is ReentrancyGuard {
     ) public view returns (uint256 maxInvest, uint256 maxTokensGet) {
         UserProfile memory usr = allUserProfile[account];
         TierProfile memory tier = indexToTier[usr.inTier];
-        uint256 userShare = tier.weight * usr.multiplier / 10
+        uint256 userShare = (tier.weight * usr.multiplier) / 100;
         if (isSharePriceSet) {
             maxInvest = sharePriceInFTM * userShare;
         } else {
@@ -442,13 +453,19 @@ contract Campaign is ReentrancyGuard {
      //TODO: Anyone should be able to call this
      */
     function finishUp() external onlyCampaignOwner {
-        require(!finishUpSuccess, "finishUp is already called");
-        require(!isLive(), "Presale is still live");
-        require(
-            !failedOrCancelled(),
-            "Presale failed or cancelled , can't call finishUp"
-        );
-        require(softCap <= collectedToken, "Did not reach soft cap");
+        if (finishUpSuccess){
+            revert CampaignOver();
+        }
+        if (isLive()){
+            revert InPresale();
+        }
+        if (failedOrCancelled()){
+            revert PresaleCancelled();
+        }
+        if (collectedToken <= softCap){
+            revert SoftcapNotReached();
+        }
+        
         finishUpSuccess = true;
 
         uint256 feeAmt = getFeeAmt(collectedToken);
@@ -457,7 +474,7 @@ contract Campaign is ReentrancyGuard {
 
         // Send fee to fee address
         if (feeAmt > 0) {
-            payToken.safeTransfer(getFeeAddress(), feeAmt);
+            payToken.safeTransfer(feeAddress, feeAmt);
         }
 
         payToken.safeTransfer(campaignOwner, remainFTM);
@@ -481,7 +498,9 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: External,  onlyFactoryOrCampaignOwner
      */
     function setTokenClaimable() external onlyCampaignOwner {
-        require(finishUpSuccess, "Campaign not finished successfully yet");
+        if (!finishUpSuccess){
+            revert CampaignNotOver();
+        }
         tokenReadyToClaim = true;
     }
 
@@ -490,14 +509,19 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: External
      */
     function claimTokens() external nonReentrant {
-        require(tokenReadyToClaim, "Tokens not ready to claim yet");
-        require(!claimedRecords[msg.sender], "You have already claimed");
+        if (!tokenReadyToClaim){
+            revert NotClaimable();
+        }
+        address account = msg.sender
+        if (claimedRecords[account]){
+            revert ClaimedAlready(account);
+        }
 
-        uint256 amtBought = getClaimableTokenAmt(msg.sender);
+        uint256 amtBought = getClaimableTokenAmt(account);
         if (amtBought > 0) {
-            claimedRecords[msg.sender] = true;
-            emit TokenClaimed(msg.sender, block.timestamp, amtBought);
-            IERC20(token).safeTransfer(msg.sender, amtBought);
+            claimedRecords[account] = true;
+            emit TokenClaimed(account, block.timestamp, amtBought);
+            IERC20(token).safeTransfer(account, amtBought);
         }
     }
 
@@ -506,13 +530,14 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: Public
      */
     function refund() external {
-        require(
-            failedOrCancelled(),
-            "Can refund for failed or cancelled campaign only"
-        );
+        if (!failedorCancelled()){
+            revert CampaignNotOver();
+        }
 
         uint256 investAmt = participants[msg.sender];
-        require(investAmt > 0, "You didn't participate in the campaign");
+        if (investAmt == 0){
+            revert InvalidAmount(investAmt);
+        }
 
         participants[msg.sender] = 0;
         payToken.safeTransfer(msg.sender, investAmt);
@@ -540,10 +565,14 @@ contract Campaign is ReentrancyGuard {
      */
     function sendTokensTo(address _to, uint256 _amount) internal {
         // Security: Can only be sent back to campaign owner or burned //
-        require(
-            (_to == campaignOwner) || (_to == BURN_ADDRESS),
-            "Can only be sent to campaign owner or burn address"
-        );
+        // require(
+        //     (_to == campaignOwner) || (_to == BURN_ADDRESS),
+        //     "Can only be sent to campaign owner or burn address"
+        // );
+        //REVIEW
+        if (_to != campaignOwner && _to != BURN_ADDRESS){
+            revert NotCampaignOwner(_to);
+        }
 
         // Burn or return UnSold token to owner
         IERC20 ercToken = IERC20(token);
@@ -557,18 +586,10 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: Internal
      */
     function getFeeAmt(uint256 _amt) internal view returns (uint256) {
+        //REViEW check decimal based on our token decimals
         return (_amt * feePcnt) / (1e6);
     }
 
-    /**
-     * @dev To get the fee address
-     * @return - The fee address
-     * @notice - Access control: Internal
-     */
-    function getFeeAddress() internal view returns (address) {
-        IFactoryGetters fact = IFactoryGetters(factory);
-        return fact.getFeeAddress();
-    }
 
     /**
      * @dev To check whether the campaign failed (softcap not met) or cancelled
@@ -622,9 +643,12 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: Public, OnlyFactory
      */
     function setCancelled() external onlyCampaignOwner {
-        require(!tokenReadyToClaim, "Too late, tokens are claimable");
-        require(!finishUpSuccess, "Too late, finishUp called");
-
+        //require(!tokenReadyToClaim, "Too late, tokens are claimable");
+        //require(!finishUpSuccess, "Too late, finishUp called");
+        //REVIEW check this
+        if (tokenReadyToClaim || finishUpSuccess){
+            revert CampaignOver();
+        }
         cancelled = true;
     }
 
@@ -637,21 +661,5 @@ contract Campaign is ReentrancyGuard {
         return tokenSalesQty;
     }
 
-    // TODO: Staker contract does not support this anymore
-    function lockTokens(
-        address _user,
-        uint256 _tokenLockTime
-    ) internal returns (bool) {
-        // IFactoryGetters fact = IFactoryGetters(factory);
-        // address stakerAddress = fact.getStakerAddress();
 
-        // Staker stakerContract = Staker(stakerAddress);
-        // stakerContract.lock(_user, (block.timestamp + _tokenLockTime));
-
-        return true;
-    }
-
-    function getParticipantsLength() external view returns (uint256) {
-        return participantsList.length;
-    }
 }
