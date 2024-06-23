@@ -20,9 +20,9 @@ interface IStaker {
         uint256 lockedFor,
         uint256 lastClaimTime
     ) external view returns (uint256);
-    function getTotalInterestAccrued(
-        address user
-    ) external view returns (uint256 totalInterest);
+    // function getTotalInterestAccrued(
+    //     address user
+    // ) external view returns (uint256 totalInterest);
     function airdropAndStake(
         address[] calldata _addresses,
         uint256[] calldata _amounts,

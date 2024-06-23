@@ -6,12 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Staker.sol";
 
-
 //TODO: Remove dependency on factory, remove factory function calls, add staker contract address
 // Update initialize and constructor
 error NotCampaignOwner(address account);
 error CampaignNotFunded();
-error InvalidAmount(uint256 amt);
+//error InvalidAmount(uint256 amt);
 error CampaignNotRevoked();
 error CampaignRegistrationError();
 error UserRegistrationError();
@@ -24,7 +23,6 @@ error CampaignOver();
 error CampaignNotOver();
 error NotClaimable();
 error ClaimedAlready(address account);
-
 
 contract Campaign is ReentrancyGuard {
     using Address for address;
@@ -53,8 +51,8 @@ contract Campaign is ReentrancyGuard {
     }
     mapping(uint256 => TierProfile) public indexToTier;
     uint256 public totalPoolShares; //TODO:what does this mean
-    uint256 public sharePriceInFTM; 
-    bool private isSharePriceSet; 
+    uint256 public sharePriceInFTM;
+    bool private isSharePriceSet;
     address[] public participantsList;
 
     //TODO: can be in staker contract
@@ -66,7 +64,7 @@ contract Campaign is ReentrancyGuard {
     mapping(address => UserProfile) public allUserProfile;
 
     // Config
-    bool public burnUnSold;//TODO: we don't need this option
+    bool public burnUnSold; //TODO: we don't need this option
 
     // Misc variables //
     uint256 public unlockDate;
@@ -110,25 +108,25 @@ contract Campaign is ReentrancyGuard {
     event Refund(address indexed user, uint256 timeStamp, uint256 amountFTM);
 
     modifier onlyCampaignOwner() {
-        if (msg.sender != campaignOwner){
+        if (msg.sender != campaignOwner) {
             revert NotCampaignOwner(msg.sender);
         }
         _;
     }
 
-    constructor (
+    constructor(
         address _token,
         address _campaignOwner,
-        uint256[4] calldata _stats,
-        uint256[4] calldata _dates,
+        uint256[4] memory _stats,
+        uint256[4] memory _dates,
         bool _burnUnSold, //TODO: we don't need this option
         uint256 _tokenLockTime,
-        uint256[5] calldata _tierWeights,
-        uint256[5] calldata _tierMinTokens,
+        uint256[5] memory _tierWeights,
+        uint256[5] memory _tierMinTokens,
         address _payToken,
-        address _staker
-        address _feeAddress,
-    ) external {
+        address _staker,
+        address _feeAddress
+    ) {
         //require(msg.sender == factory, "Only factory allowed to initialize");
         token = _token; //campaignToken
         campaignOwner = _campaignOwner;
@@ -258,12 +256,12 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: External, OnlyCampaignOwner
      */
     function fundIn() external onlyCampaignOwner {
-        if (tokenFunded){
+        if (tokenFunded) {
             revert CampaignNotFunded();
         }
         uint256 amt = getCampaignFundInTokensRequired();
-        if (amount <= 0){
-            revert InvalidAmount(amt)
+        if (amt <= 0) {
+            revert InvalidAmount(amt);
         }
         //require(amt > 0, "Invalid fund in amount");
 
@@ -274,7 +272,7 @@ contract Campaign is ReentrancyGuard {
     // In case of a "cancelled" campaign, or softCap not reached,
     // the campaign owner can retrieve back his funded tokens.
     function fundOut() external onlyCampaignOwner {
-        if (!failedOrCancelled()){
+        if (!failedOrCancelled()) {
             revert CampaignNotRevoked();
         }
 
@@ -286,44 +284,47 @@ contract Campaign is ReentrancyGuard {
 
     /**
      * @dev To Register In The Campaign In Reg Period
-     * @param _tierIndex - The tier index to participate in
      * @notice - Valid tier indexes are, 1, 2, 3 ... 6
      * @notice - Access control: Public
      */
     function registerForIDO() external nonReentrant {
         address account = msg.sender;
-        (uint256 amountStaked, _, lockedFor ,_) = IStaker(staker).getUserStakeDetails(account);
+        (uint256 amountStaked, , uint256 lockedFor, ) = IStaker(staker)
+            .getUserStakeDetails(account);
+
         //user must have a some stake value
         uint256 tierIndex = IStaker(staker).getTierIndex(amountStaked);
-        if (tierIndex == 0){
+        if (tierIndex == 0) {
             revert UserRegistrationError();
         }
-        if (!tokenFunded){
+        if (!tokenFunded) {
             revert CampaignNotFunded();
         }
-        if (!isInRegistration()){
+        if (!isInRegistration()) {
             revert CampaignRegistrationError();
         }
-        if (userRegistered(account)){
+        if (userRegistered(account)) {
             revert UserRegistrationError();
         }
-
 
         uint256 multiplier = IStaker(staker).getMultiplier(lockedFor);
 
         _register(account, tierIndex, multiplier);
     }
 
-    function _register(address _account, uint256 _tierIndex, uint256 _multiplier) private {
+    function _register(
+        address _account,
+        uint256 _tierIndex,
+        uint256 _multiplier
+    ) private {
         TierProfile storage tier = indexToTier[_tierIndex];
         tier.noOfParticipants = (tier.noOfParticipants) + 1; // Update no. of participants
         //REVIEW: do we also add multiplier here?
-        totalPoolShares = totalPoolShares + (tier.weight * multiplier); // Update total shares
+        totalPoolShares = totalPoolShares + (tier.weight * _multiplier); // Update total shares
         allUserProfile[_account] = UserProfile(true, _tierIndex, _multiplier); // Update user profile
 
         emit Registered(_account, block.timestamp, _tierIndex);
     }
-
 
     //TODO: not needed, directly get the highest tier a account is eligible for
     // function _isEligibleForTier(
@@ -356,17 +357,17 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: Public
      */
     function buyTierTokens(uint256 value) external nonReentrant {
-        payToken.safeTransferFrom(msg.sender, address(this), value);
+        address account = msg.sender;
 
-        if (!tokenFunded){
+        if (!tokenFunded) {
             revert CampaignNotFunded();
         }
 
-        if (!isLive() || !isInTierSale()){
+        if (!isLive() || !isInTierSale()) {
             revert CampaignNotLive();
         }
 
-        if (!userRegistered(account)){
+        if (!userRegistered(account)) {
             revert UserRegistrationError();
         }
 
@@ -377,24 +378,25 @@ contract Campaign is ReentrancyGuard {
         }
 
         // Check for over purchase
-        if (value == 0 || value > getRemaining()){
+        if (value == 0 || value > getRemaining()) {
+            revert InvalidAmount(value);
+        }
+        payToken.safeTransferFrom(account, address(this), value);
+
+        uint256 invested = participants[account] + value;
+
+        if (invested > userMaxInvest(account)) {
             revert InvalidAmount(value);
         }
 
-        uint256 invested = participants[msg.sender] + value;
-
-        if (invested > userMaxInvest(msg.sender)){
-            revert InvalidAmount(value);
+        if (participants[account] == 0) {
+            participantsList.push(account);
         }
-
-        if (participants[msg.sender] == 0) {
-            participantsList.push(msg.sender);
-        }
-        participants[msg.sender] = invested;
+        participants[account] = invested;
         collectedToken = collectedToken + value;
 
         emit Purchased(
-            msg.sender,
+            account,
             block.timestamp,
             value,
             calculateTokenAmount(value)
@@ -406,39 +408,42 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: Public
      */
     function buyFCFSTokens(uint256 value) external nonReentrant {
-        payToken.safeTransferFrom(msg.sender, address(this), value);
-        if (!tokenFunded){
+        address account = msg.sender;
+
+        if (!tokenFunded) {
             revert CampaignNotFunded();
-        }   
-        if (!isLive()){
+        }
+        if (!isLive()) {
             revert CampaignNotLive();
         }
 
-        if (!isInFCFS()){
+        if (!isInFCFS()) {
             revert NotInFCFS();
         }
-        if (!userRegistered(account)){
+        if (!userRegistered(account)) {
             revert UserRegistrationError();
         }
 
-        // require(userRegistered(msg.sender), "Not regisered");
+        // require(userRegistered(account), "Not regisered");
 
         // Check for over purchase
-        if (value == 0 || value > getRemaining()){
+        if (value == 0 || value > getRemaining()) {
             revert InvalidAmount(value);
         }
-        
-        if (participants[msg.sender] == 0) {
-            participantsList.push(msg.sender);
-        }
-        uint256 invested = participants[msg.sender] + value;
 
-        participants[msg.sender] = invested;
+        payToken.safeTransferFrom(account, address(this), value);
+
+        if (participants[account] == 0) {
+            participantsList.push(account);
+        }
+        uint256 invested = participants[account] + value;
+
+        participants[account] = invested;
 
         collectedToken = collectedToken + value;
 
         emit Purchased(
-            msg.sender,
+            account,
             block.timestamp,
             value,
             calculateTokenAmount(value)
@@ -453,19 +458,19 @@ contract Campaign is ReentrancyGuard {
      //TODO: Anyone should be able to call this
      */
     function finishUp() external onlyCampaignOwner {
-        if (finishUpSuccess){
+        if (finishUpSuccess) {
             revert CampaignOver();
         }
-        if (isLive()){
+        if (isLive()) {
             revert InPresale();
         }
-        if (failedOrCancelled()){
+        if (failedOrCancelled()) {
             revert PresaleCancelled();
         }
-        if (collectedToken <= softCap){
+        if (collectedToken <= softCap) {
             revert SoftcapNotReached();
         }
-        
+
         finishUpSuccess = true;
 
         uint256 feeAmt = getFeeAmt(collectedToken);
@@ -498,7 +503,7 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: External,  onlyFactoryOrCampaignOwner
      */
     function setTokenClaimable() external onlyCampaignOwner {
-        if (!finishUpSuccess){
+        if (!finishUpSuccess) {
             revert CampaignNotOver();
         }
         tokenReadyToClaim = true;
@@ -509,11 +514,11 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: External
      */
     function claimTokens() external nonReentrant {
-        if (!tokenReadyToClaim){
+        if (!tokenReadyToClaim) {
             revert NotClaimable();
         }
-        address account = msg.sender
-        if (claimedRecords[account]){
+        address account = msg.sender;
+        if (claimedRecords[account]) {
             revert ClaimedAlready(account);
         }
 
@@ -530,12 +535,12 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: Public
      */
     function refund() external {
-        if (!failedorCancelled()){
+        if (!failedOrCancelled()) {
             revert CampaignNotOver();
         }
 
         uint256 investAmt = participants[msg.sender];
-        if (investAmt == 0){
+        if (investAmt == 0) {
             revert InvalidAmount(investAmt);
         }
 
@@ -570,7 +575,7 @@ contract Campaign is ReentrancyGuard {
         //     "Can only be sent to campaign owner or burn address"
         // );
         //REVIEW
-        if (_to != campaignOwner && _to != BURN_ADDRESS){
+        if (_to != campaignOwner && _to != BURN_ADDRESS) {
             revert NotCampaignOwner(_to);
         }
 
@@ -589,7 +594,6 @@ contract Campaign is ReentrancyGuard {
         //REViEW check decimal based on our token decimals
         return (_amt * feePcnt) / (1e6);
     }
-
 
     /**
      * @dev To check whether the campaign failed (softcap not met) or cancelled
@@ -646,7 +650,7 @@ contract Campaign is ReentrancyGuard {
         //require(!tokenReadyToClaim, "Too late, tokens are claimable");
         //require(!finishUpSuccess, "Too late, finishUp called");
         //REVIEW check this
-        if (tokenReadyToClaim || finishUpSuccess){
+        if (tokenReadyToClaim || finishUpSuccess) {
             revert CampaignOver();
         }
         cancelled = true;
@@ -660,6 +664,4 @@ contract Campaign is ReentrancyGuard {
     function getCampaignFundInTokensRequired() public view returns (uint256) {
         return tokenSalesQty;
     }
-
-
 }

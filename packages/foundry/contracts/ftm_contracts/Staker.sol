@@ -215,7 +215,7 @@ contract Staker is IStaker, Context, Ownable {
 
         uint256 lockStartTime = userStakeDetails.lockedAt;
         uint256 lockDuration = userStakeDetails.lockedFor;
-        uint256 unlock_time = lockStzseartTime + lockDuration;
+        uint256 unlock_time = lockStartTime + lockDuration;
         uint256 currentTime = block.timestamp;
 
         uint256 apr_rewards = calculateRewards(
