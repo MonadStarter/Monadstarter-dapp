@@ -1,4 +1,0 @@
-////CAMPAIGN.SOL/////
-when user registers for a campaign, we use the staker contract to get their 
-multiplier and tier. If user chooses to unstake or lose their tier, they would still retain the multiplier and tier for the registered campaign.
-
