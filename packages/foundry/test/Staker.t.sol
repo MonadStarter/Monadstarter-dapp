@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -52,7 +52,7 @@ contract StakerTest is Test {
     function fundContract(uint256 amount) public {
         vm.startPrank(owner);
         token.approve(address(staker), amount);
-        staker.fund_rewards(amount);
+        staker.fundRewards(amount);
         vm.stopPrank();
     }
 
@@ -60,7 +60,7 @@ contract StakerTest is Test {
         uint256 value,
         uint256 stakedFor,
         uint256 lockedFor
-    ) public returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 ratio = 50 +
             ((50 * (stakedFor - (lockedFor / 2))) / (lockedFor / 2));
         return (value * ratio) / 100;
@@ -152,7 +152,7 @@ contract StakerTest is Test {
         //adding rewards
         vm.startPrank(owner);
         token.approve(address(staker), 100 ether);
-        staker.fund_rewards(1 ether);
+        staker.fundRewards(1 ether);
         vm.stopPrank();
 
         vm.prank(user2);
@@ -353,7 +353,7 @@ contract StakerTest is Test {
         vm.prank(user1);
         // Attempt to fund with more tokens than the user holds
         vm.expectRevert(bytes("ERC20: transfer amount exceeds balance"));
-        staker.fund_rewards(200 ether);
+        staker.fundRewards(200 ether);
     }
 
     function testMultipleUsersStakingAndUnstakingWithPenalty() public {
