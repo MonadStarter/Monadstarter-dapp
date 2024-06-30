@@ -11,25 +11,49 @@ contract StakerTest is Test {
     Staker public staker;
     ZKSTR public token;
 
+    address public owner;
     address public user1;
     address public user2;
 
     function setUp() public {
         // Create test users
-        user1 = vm.addr(1);
-        user2 = vm.addr(2);
+
+        owner = vm.addr(1);
+        user1 = vm.addr(2);
+        user2 = vm.addr(3);
 
         // Fund test users with some ether
         vm.deal(user1, 100 ether);
         vm.deal(user2, 100 ether);
 
+        vm.startPrank(owner);
         // Deploy ERC20 token and allocate some tokens to users
-        token = new ZKSTR(10000 ether);
+        token = new ZKSTR(100000 ether);
+        // Deploy Staker contract
+        staker = new Staker(address(token));
+
         token.transfer(user1, 100 ether);
         token.transfer(user2, 100 ether);
 
-        // Deploy Staker contract
-        staker = new Staker(address(token));
+        vm.stopPrank();
+    }
+
+    function setUpUserWithStake(
+        address user,
+        uint256 amount,
+        uint256 duration
+    ) public {
+        vm.prank(user);
+        token.approve(address(staker), amount);
+        vm.prank(user);
+        staker.stake(amount, duration);
+    }
+
+    function fundContract(uint256 amount) public {
+        vm.startPrank(owner);
+        token.approve(address(staker), amount);
+        staker.fund_rewards(amount);
+        vm.stopPrank();
     }
 
     function unstake_value_after_penalty(
@@ -126,8 +150,11 @@ contract StakerTest is Test {
         assertEq(token.balanceOf(user1), 100 ether); //no APR because not rewards not funded or penalized
 
         //adding rewards
+        vm.startPrank(owner);
         token.approve(address(staker), 100 ether);
         staker.fund_rewards(1 ether);
+        vm.stopPrank();
+
         vm.prank(user2);
         staker.unstake(1 ether); //trying to unstake all
         check_stake(user2, 0 ether, 0, 0, block.timestamp);
@@ -259,4 +286,200 @@ contract StakerTest is Test {
     //     uint256 userBalance = token.balanceOf(user1);
     //     assert(userBalance > 0); // Rewards should increase user balance
     // }
+
+    function testConstructorSettings() public view {
+        // Test initial multipliers
+        assertEq(
+            staker.getMultiplier(30 days),
+            10,
+            "30-day multiplier should be 1x"
+        );
+        assertEq(
+            staker.getMultiplier(60 days),
+            15,
+            "60-day multiplier should be 1.5x"
+        );
+        assertEq(
+            staker.getMultiplier(90 days),
+            20,
+            "90-day multiplier should be 2x"
+        );
+        assertEq(
+            staker.getMultiplier(180 days),
+            35,
+            "180-day multiplier should be 3.5x"
+        );
+
+        // Test initial APRs
+        assertEq(staker.getAPR(30 days), 100, "30-day APR should be 1%");
+        assertEq(staker.getAPR(60 days), 300, "60-day APR should be 3%");
+        assertEq(staker.getAPR(90 days), 500, "90-day APR should be 5%");
+        assertEq(staker.getAPR(180 days), 700, "180-day APR should be 7%");
+
+        // Test initial tier indexes
+        assertEq(
+            staker.getTierIndex(29_999),
+            0,
+            "Tier index for 29,999 tokens should be 0"
+        );
+        assertEq(
+            staker.getTierIndex(30_000),
+            1,
+            "Tier index for 30,000 tokens should be 1"
+        );
+        assertEq(
+            staker.getTierIndex(75_000),
+            2,
+            "Tier index for 75,000 tokens should be 2"
+        );
+        assertEq(
+            staker.getTierIndex(250_000),
+            3,
+            "Tier index for 250,000 tokens should be 3"
+        );
+        assertEq(
+            staker.getTierIndex(500_000),
+            4,
+            "Tier index for 500,000 tokens should be 4"
+        );
+        assertEq(
+            staker.getTierIndex(1_000_000),
+            5,
+            "Tier index for 1,000,000 tokens should be 5"
+        );
+    }
+
+    function testFailFundRewardsWithInsufficientBalance() public {
+        vm.prank(user1);
+        // Attempt to fund with more tokens than the user holds
+        vm.expectRevert(bytes("ERC20: transfer amount exceeds balance"));
+        staker.fund_rewards(200 ether);
+    }
+
+    function testMultipleUsersStakingAndUnstakingWithPenalty() public {
+        // User1 stakes
+        firstTimeStake(user1);
+        // User2 stakes a larger amount for a longer duration
+        vm.prank(user2);
+        token.approve(address(staker), 100 ether);
+        vm.prank(user2);
+        staker.stake(10 ether, 180 days);
+
+        // Fast forward time and check balances and penalties
+        vm.warp(block.timestamp + 90 days); // Halfway for user2, full period for user1
+
+        // User1 unstakes with no penalty
+        vm.prank(user1);
+        staker.unstake(1 ether);
+
+        // User2 unstakes with penalty
+        vm.prank(user2);
+        staker.unstake(5 ether);
+
+        // Check final balances
+        assertEq(token.balanceOf(user1), 100 ether); // no penalty
+        assertLt(token.balanceOf(user2), 95 ether); // penalty applied
+    }
+
+    function testClaimRewardsWithoutFunding() public {
+        firstTimeStake(user1);
+        vm.warp(block.timestamp + 40 days);
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(NoRewardsInTressury.selector));
+        staker.claim();
+    }
+
+    function testStakeWithUnsupportedDuration() public {
+        vm.prank(user1);
+        token.approve(address(staker), 100 ether);
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(InvalidDuration.selector, 15 days)
+        );
+        staker.stake(1 ether, 15 days); // Unsupported duration
+    }
+
+    function testHaltedContract() public {
+        // Halt the contract
+        vm.prank(owner);
+        staker.halt(true);
+
+        // Try staking and unstaking
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Halted.selector));
+        staker.stake(1 ether, 30 days);
+
+        vm.prank(owner);
+        staker.halt(false);
+
+        firstTimeStake(user1);
+
+        vm.prank(owner);
+        staker.halt(true);
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Halted.selector));
+        staker.unstake(1 ether);
+    }
+
+    function testRewardCalculationAccuracy() public {
+        uint256 stakeAmount = 1 ether;
+        uint256 duration = 180 days;
+
+        setUpUserWithStake(user1, stakeAmount, duration);
+
+        vm.warp(block.timestamp + 365 days); // Forward one year
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(NoRewardsInTressury.selector));
+        staker.claim();
+
+        fundContract(100 ether);
+
+        vm.prank(user1);
+        staker.unstake(1 ether);
+
+        uint256 apr = staker.getAPR(duration);
+        uint256 expectedReward = (1 ether * apr * 365 days) /
+            (365 days * 100_00);
+        uint256 userBalance = token.balanceOf(user1);
+
+        assertApproxEqAbs(
+            userBalance,
+            100 ether + expectedReward,
+            0.000000000001 ether
+        );
+    }
+
+    function testVerifyRewardCalculation() public {
+        uint256 stakeAmount = 1 ether;
+        uint256 duration = 30 days;
+
+        setUpUserWithStake(user1, stakeAmount, duration);
+
+        vm.warp(block.timestamp + duration + 15 days);
+
+        uint256 apr = staker.getAPR(duration);
+        uint256 timeStaked = duration + 15 days;
+        uint256 expectedReward = (stakeAmount * apr * timeStaked) /
+            (365 days * 100_00);
+
+        fundContract(expectedReward + 1 ether);
+
+        uint256 initialBalance = token.balanceOf(user1);
+
+        vm.prank(user1);
+        staker.unstake(0);
+
+        uint256 newBalance = token.balanceOf(user1);
+        uint256 actualReward = newBalance - initialBalance;
+
+        assertApproxEqAbs(
+            actualReward,
+            expectedReward,
+            0.000000000001 ether,
+            "The actual reward does not match the expected reward closely enough."
+        );
+    }
 }
