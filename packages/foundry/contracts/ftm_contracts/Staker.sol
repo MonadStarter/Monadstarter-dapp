@@ -206,7 +206,7 @@ contract Staker is IStaker, Context, Ownable {
      * @dev if the use unstakes with zero value, then only the accrued interest is withdrawn
      */
 
-    function unstake(uint256 value) external {
+    function unstake(uint256 value) external notHalted {
         UserStakeDetails storage userStakeDetails = _userMapping[msg.sender];
 
         if (value > userStakeDetails.amountStaked) {
