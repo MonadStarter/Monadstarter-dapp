@@ -189,6 +189,39 @@ contract StakerTest is Test {
         );
     }
 
+    //works for any valid amount of stake and duration
+    function testFuzzStake(uint256 value, uint256 duration) public {
+        vm.assume(value > 0 && value <= token.balanceOf(user1));
+        vm.assume(duration > 0);
+
+        vm.prank(user1);
+        token.approve(address(staker), token.balanceOf(user1));
+
+        if (
+            duration != 30 days &&
+            duration != 60 days &&
+            duration != 90 days &&
+            duration != 180 days
+        ) {
+            vm.expectRevert();
+            vm.prank(user1);
+            staker.stake(value, duration);
+            return;
+        }
+
+        vm.prank(user1);
+        staker.stake(value, duration);
+        (
+            uint256 amountStaked,
+            uint256 lockedAt,
+            uint256 lockedFor,
+            uint256 lastClaimTime
+        ) = staker.getUserStakeDetails(user1);
+
+        assertEq(amountStaked, value);
+        assertEq(lockedFor, duration);
+    }
+
     function testUnstake_Penalization() public {
         // User1 stakes tokens
         firstTimeStake(user1); //user 1 has 99 E, staked 1 E
