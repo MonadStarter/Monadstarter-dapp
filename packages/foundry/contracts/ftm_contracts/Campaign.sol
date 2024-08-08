@@ -50,7 +50,7 @@ contract Campaign is ReentrancyGuard {
     }
     mapping(uint256 => TierProfile) public indexToTier;
     uint256 public totalPoolShares; //TODO:what does this mean
-    uint256 public sharePriceInFTM;
+    uint256 public sharePriceInMOST;
     bool private isSharePriceSet;
     address[] public participantsList;
 
@@ -550,7 +550,7 @@ contract Campaign is ReentrancyGuard {
     }
 
     /**
-     * @dev To calculate the calimable token amount based on user's total invested FTM
+     * @dev To calculate the calimable token amount based on user's total invested MOST
      * @param _user - The user's wallet address
      * @return - The total amount of token
      * @notice - Access control: Public
@@ -584,9 +584,9 @@ contract Campaign is ReentrancyGuard {
     }
 
     /**
-     * @dev To calculate the amount of fee in FTM
-     * @param _amt - The amount in FTM
-     * @return - The amount of fee in FTM
+     * @dev To calculate the amount of fee in MOST
+     * @param _amt - The amount in MOST
+     * @return - The amount of fee in MOST
      * @notice - Access control: Internal
      */
     function getFeeAmt(uint256 _amt) internal view returns (uint256) {
