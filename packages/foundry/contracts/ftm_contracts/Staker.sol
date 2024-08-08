@@ -34,7 +34,7 @@ contract Staker is IStaker, Ownable {
         uint256 lastClaimTime;
     }
 
-    IERC20 private _token; //ZKSTR
+    IERC20 private _token; //MOST
 
     mapping(address => UserStakeDetails) private _userMapping;
 
@@ -223,7 +223,7 @@ contract Staker is IStaker, Ownable {
     }
 
     /**
-     * @dev Airdrop and stake ZKSTR
+     * @dev Airdrop and stake MOST
      * @notice - Access control: Only Owner.
      */
     function airdropAndStake(
@@ -298,7 +298,7 @@ contract Staker is IStaker, Ownable {
     /**
      * @dev staked balance of a user
      * @notice - Access control: Public.
-     * @return - the number of ZKSTR a user has staked
+     * @return - the number of MOST a user has staked
      */
     //
     function stakedBalance(address account) external view returns (uint256) {
