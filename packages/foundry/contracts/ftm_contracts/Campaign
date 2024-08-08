@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Staker.sol";
 
 
-//TODO: Remove dependency on factory, remove factory function calls, add staker contract address
-// Update initialize and constructor
 error NotCampaignOwner(address account);
 contract Campaign is ReentrancyGuard {
     using Address for address;
