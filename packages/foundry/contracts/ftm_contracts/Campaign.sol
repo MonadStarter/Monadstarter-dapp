@@ -40,7 +40,7 @@ contract Campaign is ReentrancyGuard {
     uint256 public tokenLockTime; // probably don't need this
     IERC20 public payToken;
     address public staker;
-    address public feeAddress; //multisig of zk starter
+    address public feeAddress; //multisig 
 
     //TODO: also have max number of participants
     struct TierProfile {
