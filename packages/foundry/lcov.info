@@ -889,9 +889,9 @@ BRF:36
 BRH:28
 end_of_record
 TN:
-SF:contracts/ftm_contracts/ZKSTR.sol
-FN:7,ZKSTR.
-FNDA:22,ZKSTR.
+SF:contracts/ftm_contracts/mostR.sol
+FN:7,mostR.
+FNDA:22,mostR.
 DA:8,22
 DA:8,22
 FNF:1
