@@ -78,7 +78,7 @@ contract Campaign is ReentrancyGuard {
     mapping(address => bool) public claimedRecords;
     bool public tokenReadyToClaim;
 
-    // Map user address to amount invested in FTM or any ERC-20 //
+    // Map user address to amount invested in any ERC-20 //
     mapping(address => uint256) public participants;
 
     address public constant BURN_ADDRESS =
@@ -94,7 +94,7 @@ contract Campaign is ReentrancyGuard {
     event Purchased(
         address indexed user,
         uint256 timeStamp,
-        uint256 amountFTM,
+        uint256 amountMOST,
         uint256 amountToken
     );
 
@@ -104,7 +104,7 @@ contract Campaign is ReentrancyGuard {
         uint256 amountToken
     );
 
-    event Refund(address indexed user, uint256 timeStamp, uint256 amountFTM);
+    event Refund(address indexed user, uint256 timeStamp, uint256 amountMOST);
 
     modifier onlyCampaignOwner() {
         if (msg.sender != campaignOwner) {
@@ -233,7 +233,7 @@ contract Campaign is ReentrancyGuard {
         TierProfile memory tier = indexToTier[usr.inTier];
         uint256 userShare = (tier.weight * usr.multiplier) / 100;
         if (isSharePriceSet) {
-            maxInvest = sharePriceInFTM * userShare;
+            maxInvest = sharePriceInMOST * userShare;
         } else {
             maxInvest = (hardCap / totalPoolShares) * (userShare);
         }
@@ -372,7 +372,7 @@ contract Campaign is ReentrancyGuard {
 
         //REVIEW
         if (!isSharePriceSet) {
-            sharePriceInFTM = hardCap / totalPoolShares;
+            sharePriceInMOST = hardCap / totalPoolShares;
             isSharePriceSet = true;
         }
 
@@ -473,19 +473,19 @@ contract Campaign is ReentrancyGuard {
         finishUpSuccess = true;
 
         uint256 feeAmt = getFeeAmt(collectedToken);
-        uint256 unSoldAmtFTM = getRemaining();
-        uint256 remainFTM = collectedToken - feeAmt;
+        uint256 unSoldAmtMOST = getRemaining();
+        uint256 remainMOST = collectedToken - feeAmt;
 
         // Send fee to fee address
         if (feeAmt > 0) {
             payToken.safeTransfer(feeAddress, feeAmt);
         }
 
-        payToken.safeTransfer(campaignOwner, remainFTM);
+        payToken.safeTransfer(campaignOwner, remainMOST);
 
         // Calculate the unsold amount //
-        if (unSoldAmtFTM > 0) {
-            uint256 unsoldAmtToken = calculateTokenAmount(unSoldAmtFTM);
+        if (unSoldAmtMOST > 0) {
+            uint256 unsoldAmtToken = calculateTokenAmount(unSoldAmtMOST);
             // Burn or return UnSold token to owner
             sendTokensTo(
                 burnUnSold ? BURN_ADDRESS : campaignOwner,
@@ -620,19 +620,19 @@ contract Campaign is ReentrancyGuard {
 
     /**
      * @dev Calculate amount of token receivable.
-     * @param _FTMInvestment - Amount of FTM invested
+     * @param _MOSTInvestment - Amount of MOST invested
      * @return - The amount of token
      * @notice - Access control: Public
      */
     function calculateTokenAmount(
-        uint256 _FTMInvestment
+        uint256 _MOSTInvestment
     ) public view returns (uint256) {
-        return (_FTMInvestment * tokenSalesQty) / hardCap;
+        return (_MOSTInvestment * tokenSalesQty) / hardCap;
     }
 
     /**
-     * @dev Gets remaining FTM to reach hardCap.
-     * @return - The amount of FTM.
+     * @dev Gets remaining MOST to reach hardCap.
+     * @return - The amount of MOST.
      * @notice - Access control: Public
      */
     function getRemaining() public view returns (uint256) {
