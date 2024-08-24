@@ -3,12 +3,13 @@ pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
 import "../src/Campaign.sol";
-import "./mocks/MockERC20.sol";
+import "./src/BTC.sol";
+import "./src/MOST.sol";
 
 contract CampaignTest is Test {
     Campaign public campaign;
-    MockERC20 public token;
-    MockERC20 public payToken;
+    MOST public token;
+    BTC public payToken;
     address public owner;
     address public user1;
     address public user2;
@@ -22,9 +23,9 @@ contract CampaignTest is Test {
         staker = address(0x3);
         feeAddress = address(0x4);
 
-        // Deploy mock tokens
-        token = new MockERC20("Campaign Token", "CTK");
-        payToken = new MockERC20("Pay Token", "PTK");
+        // Deploy tokens
+        token = new MOST();
+        payToken = new BTC();
 
         // Set up campaign parameters
         address _token = address(token);
@@ -38,6 +39,7 @@ contract CampaignTest is Test {
         ];
         bool _burnUnSold = false;
         uint256 _tokenLockTime = 30 days;
+        //need to change these
         uint256[5] memory _tierWeights = [10, 20, 30, 40, 50];
         uint256[5] memory _tierMinTokens = [100, 200, 300, 400, 500];
         address _payToken = address(payToken);
@@ -82,6 +84,4 @@ contract CampaignTest is Test {
             assertEq(noOfParticipants, 0);
         }
     }
-
-    // Add more test functions here
 }
