@@ -226,42 +226,42 @@ contract Staker is IStaker, Ownable {
      * @dev Airdrop and stake MOST
      * @notice - Access control: Only Owner.
      */
-    function airdropAndStake(
-        address[] calldata _addresses,
-        uint256[] calldata _amounts,
-        uint256 _totalAmount,
-        uint256 _lockDuration
-    ) external onlyOwner {
-        // require(
-        //     _addresses.length == _amounts.length,
-        //     "Array lengths do not match"
-        // );
+    // function airdropAndStake(
+    //     address[] calldata _addresses,
+    //     uint256[] calldata _amounts,
+    //     uint256 _totalAmount,
+    //     uint256 _lockDuration
+    // ) external onlyOwner {
+    //     // require(
+    //     //     _addresses.length == _amounts.length,
+    //     //     "Array lengths do not match"
+    //     // );
 
-        if (_addresses.length == _amounts.length) {
-            revert LengthMismatch();
-        }
-        _checkDuration(_lockDuration);
-        // Transfer the total amount to this contract
-        // require(
-        //     _token.transferFrom(msg.sender, address(this), _totalAmount),
-        //     "Transfer failed"
-        // );
+    //     if (_addresses.length == _amounts.length) {
+    //         revert LengthMismatch();
+    //     }
+    //     _checkDuration(_lockDuration);
+    //     // Transfer the total amount to this contract
+    //     // require(
+    //     //     _token.transferFrom(msg.sender, address(this), _totalAmount),
+    //     //     "Transfer failed"
+    //     // );
 
-        _token.safeTransferFrom(msg.sender, address(this), _totalAmount);
+    //     _token.safeTransferFrom(msg.sender, address(this), _totalAmount);
 
-        for (uint256 i = 0; i < _addresses.length; i++) {
-            address user = _addresses[i];
-            uint256 amount = _amounts[i];
+    //     for (uint256 i = 0; i < _addresses.length; i++) {
+    //         address user = _addresses[i];
+    //         uint256 amount = _amounts[i];
 
-            // Update the user's staking details
-            _userMapping[user] = UserStakeDetails({
-                lockedAt: block.timestamp,
-                lockedFor: _lockDuration,
-                lastClaimTime: block.timestamp,
-                amountStaked: amount
-            });
-        }
-    }
+    //         // Update the user's staking details
+    //         _userMapping[user] = UserStakeDetails({
+    //             lockedAt: block.timestamp,
+    //             lockedFor: _lockDuration,
+    //             lastClaimTime: block.timestamp,
+    //             amountStaked: amount
+    //         });
+    //     }
+    // }
 
     /**
      * @dev to set the multipliers array. add values in whole decimals

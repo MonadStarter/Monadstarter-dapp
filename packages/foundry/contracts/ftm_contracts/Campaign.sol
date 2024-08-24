@@ -40,7 +40,7 @@ contract Campaign is ReentrancyGuard {
     uint256 public tokenLockTime; // probably don't need this
     IERC20 public payToken;
     address public staker;
-    address public feeAddress; //multisig 
+    address public feeAddress; //multisig
 
     //TODO: also have max number of participants
     struct TierProfile {
@@ -54,7 +54,6 @@ contract Campaign is ReentrancyGuard {
     bool private isSharePriceSet;
     address[] public participantsList;
 
-    //TODO: can be in staker contract
     struct UserProfile {
         bool isRegisterd;
         uint256 inTier;
@@ -121,7 +120,7 @@ contract Campaign is ReentrancyGuard {
         bool _burnUnSold, //TODO: we don't need this option
         uint256 _tokenLockTime,
         uint256[5] memory _tierWeights,
-        uint256[5] memory _tierMinTokens,
+        uint256[5] memory _tierMinTokens, //either don't have this or have caps on tier registration
         address _payToken,
         address _staker,
         address _feeAddress

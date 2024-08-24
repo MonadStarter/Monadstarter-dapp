@@ -5,11 +5,11 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../contracts/ftm_contracts/Staker.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../contracts/ftm_contracts/ZKSTR.sol";
+import "../contracts/ftm_contracts/MOST.sol";
 
 contract StakerTest is Test {
     Staker public staker;
-    ZKSTR public token;
+    MOST public token;
 
     address public owner;
     address public user1;
@@ -28,7 +28,7 @@ contract StakerTest is Test {
 
         vm.startPrank(owner);
         // Deploy ERC20 token and allocate some tokens to users
-        token = new ZKSTR(100000 ether);
+        token = new MOST(100000 ether);
         // Deploy Staker contract
         staker = new Staker(address(token));
 
