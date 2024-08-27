@@ -119,8 +119,8 @@ contract Campaign is ReentrancyGuard {
         uint256[4] memory _dates,
         bool _burnUnSold, //TODO: we don't need this option
         uint256 _tokenLockTime,
-        uint256[5] memory _tierWeights,
-        uint256[5] memory _tierMinTokens, //either don't have this or have caps on tier registration
+        uint8[5] memory _tierWeights,
+        uint16[5] memory _tierMinTokens, //either don't have this or have caps on tier registration
         address _payToken,
         address _staker,
         address _feeAddress
@@ -141,7 +141,7 @@ contract Campaign is ReentrancyGuard {
         payToken = IERC20(_payToken);
         staker = _staker;
         feeAddress = _feeAddress;
-        for (uint256 i = 0; i < _tierWeights.length; i++) {
+        for (uint8 i = 0; i < _tierWeights.length; i++) {
             indexToTier[i + 1] = TierProfile(
                 _tierWeights[i],
                 _tierMinTokens[i],

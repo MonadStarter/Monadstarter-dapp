@@ -3,9 +3,9 @@ pragma solidity 0.8.26;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../contracts/ftm_contracts/Staker.sol";
+import "../contracts/most_contracts/Staker.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../contracts/ftm_contracts/MOST.sol";
+import "../contracts/most_contracts/MOST.sol";
 
 contract StakerTest is Test {
     Staker public staker;
@@ -237,13 +237,11 @@ contract StakerTest is Test {
         }
 
         vm.prank(user1);
+        token.approve(address(staker), value);
+        vm.prank(user1);
         staker.stake(value, duration);
-        (
-            uint256 amountStaked,
-            uint256 lockedAt,
-            uint256 lockedFor,
-            uint256 lastClaimTime
-        ) = staker.getUserStakeDetails(user1);
+        (uint256 amountStaked, , uint256 lockedFor, ) = staker
+            .getUserStakeDetails(user1);
 
         assertEq(amountStaked, value);
         assertEq(lockedFor, duration);

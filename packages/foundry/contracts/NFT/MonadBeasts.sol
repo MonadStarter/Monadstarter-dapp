@@ -2,12 +2,10 @@
 pragma solidity 0.8.26;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract MonadBeasts is ERC721 {
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+    uint256 private _tokenIds;
 
     bytes32 public merkleRoot;
 
@@ -25,10 +23,10 @@ contract MonadBeasts is ERC721 {
 
         // Change the logic here if you need to work with rarity
         for (uint256 i = 0; i < quantity; i++) {
-            uint256 tokenId = _tokenIds.current();
+            uint256 tokenId = _tokenIds;
             _mint(msg.sender, tokenId);
 
-            _tokenIds.increment();
+            _tokenIds += 1;
         }
     }
 }

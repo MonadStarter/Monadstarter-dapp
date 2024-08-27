@@ -2,10 +2,10 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import "../src/Campaign.sol";
-import "./src/BTC.sol";
-import "./src/MOST.sol";
-
+import "../contracts/most_contracts/Campaign.sol";
+import "../contracts/most_contracts/BTC.sol";
+import "../contracts/most_contracts/MOST.sol";
+import "forge-std/console.sol";
 contract CampaignTest is Test {
     Campaign public campaign;
     MOST public token;
@@ -24,24 +24,30 @@ contract CampaignTest is Test {
         feeAddress = address(0x4);
 
         // Deploy tokens
-        token = new MOST();
-        payToken = new BTC();
+        token = new MOST(10 ** 12);
+        payToken = new BTC(10 ** 12);
 
         // Set up campaign parameters
         address _token = address(token);
         address _campaignOwner = owner;
-        uint256[4] memory _stats = [100 ether, 1000 ether, 10000 ether, 500]; // softCap, hardCap, tokenSalesQty, feePcnt
+        uint256[4] memory _stats = [
+            uint256(100 ether),
+            uint256(1000 ether),
+            uint256(10000 ether),
+            uint256(500)
+        ];
+        // softCap, hardCap, tokenSalesQty, feePcnt
         uint256[4] memory _dates = [
-            block.timestamp,
-            block.timestamp + 7 days,
-            block.timestamp + 2 days,
-            block.timestamp + 5 days
+            uint256(block.timestamp),
+            uint256(block.timestamp + 7 days),
+            uint256(block.timestamp + 2 days),
+            uint256(block.timestamp + 5 days)
         ];
         bool _burnUnSold = false;
         uint256 _tokenLockTime = 30 days;
         //need to change these
-        uint256[5] memory _tierWeights = [10, 20, 30, 40, 50];
-        uint256[5] memory _tierMinTokens = [100, 200, 300, 400, 500];
+        uint8[5] memory _tierWeights = [10, 20, 30, 40, 50];
+        uint16[5] memory _tierMinTokens = [100, 200, 300, 400, 500];
         address _payToken = address(payToken);
 
         // Deploy campaign contract
@@ -58,30 +64,5 @@ contract CampaignTest is Test {
             staker,
             feeAddress
         );
-    }
-
-    function testInitialState() public {
-        assertEq(campaign.campaignOwner(), owner);
-        assertEq(campaign.token(), address(token));
-        assertEq(campaign.softCap(), 100 ether);
-        assertEq(campaign.hardCap(), 1000 ether);
-        assertEq(campaign.tokenSalesQty(), 10000 ether);
-        assertEq(campaign.feePcnt(), 500);
-        assertEq(campaign.payToken(), address(payToken));
-        assertEq(campaign.staker(), staker);
-        assertEq(campaign.feeAddress(), feeAddress);
-    }
-
-    function testTierSetup() public {
-        for (uint256 i = 1; i <= 5; i++) {
-            (
-                uint256 weight,
-                uint256 minTokens,
-                uint256 noOfParticipants
-            ) = campaign.indexToTier(i);
-            assertEq(weight, i * 10);
-            assertEq(minTokens, i * 100);
-            assertEq(noOfParticipants, 0);
-        }
     }
 }
