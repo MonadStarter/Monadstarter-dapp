@@ -28,7 +28,7 @@ contract Campaign is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address public campaignOwner;
-    address public token; //campaignToken
+    address public token; //usdc, eth or usdt
     uint256 public softCap;
     uint256 public hardCap;
     uint256 public tokenSalesQty;
@@ -38,7 +38,7 @@ contract Campaign is ReentrancyGuard {
     uint256 public regEndDate;
     uint256 public tierSaleEndDate;
     uint256 public tokenLockTime; // probably don't need this
-    IERC20 public payToken;
+    IERC20 public payToken; //campaignToken
     address public staker;
     address public feeAddress; //multisig
 
@@ -119,8 +119,8 @@ contract Campaign is ReentrancyGuard {
         uint256[4] memory _dates,
         bool _burnUnSold, //TODO: we don't need this option
         uint256 _tokenLockTime,
-        uint8[5] memory _tierWeights,
-        uint16[5] memory _tierMinTokens, //either don't have this or have caps on tier registration
+        uint256[5] memory _tierWeights,
+        uint256[5] memory _tierMinTokens, //either don't have this or have caps on tier registration
         address _payToken,
         address _staker,
         address _feeAddress
@@ -141,7 +141,7 @@ contract Campaign is ReentrancyGuard {
         payToken = IERC20(_payToken);
         staker = _staker;
         feeAddress = _feeAddress;
-        for (uint8 i = 0; i < _tierWeights.length; i++) {
+        for (uint256 i = 0; i < _tierWeights.length; i++) {
             indexToTier[i + 1] = TierProfile(
                 _tierWeights[i],
                 _tierMinTokens[i],
@@ -264,7 +264,7 @@ contract Campaign is ReentrancyGuard {
         //require(amt > 0, "Invalid fund in amount");
 
         tokenFunded = true;
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amt);
+        IERC20(payToken).safeTransferFrom(msg.sender, address(this), amt);
     }
 
     // In case of a "cancelled" campaign, or softCap not reached,
@@ -275,7 +275,7 @@ contract Campaign is ReentrancyGuard {
         }
 
         tokenFunded = false;
-        IERC20 ercToken = IERC20(token);
+        IERC20 ercToken = IERC20(payToken);
         uint256 totalTokens = ercToken.balanceOf(address(this));
         sendTokensTo(campaignOwner, totalTokens);
     }
