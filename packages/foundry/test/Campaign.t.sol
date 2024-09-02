@@ -10,14 +10,19 @@ import "forge-std/console.sol";
 contract CampaignTest is Test {
     Staker public staker;
     Campaign public campaign;
-    MOST public stakeToken;
-    BTC public payToken;
-    USDC public usdcToken;
+    MOST public stakeTokenMOST;
+    BTC public campaignTokenBTC;
+    USDC public payTokenUSDC;
 
     address public owner;
     address public user1;
     address public user2;
     address public feeAddress;
+
+    uint256 public softcap;
+    uint256 public hardcap;
+    uint256 public tokenSalesQuantity;
+    uint256 public fee;
 
     function setUp() public {
         owner = address(this);
@@ -26,30 +31,30 @@ contract CampaignTest is Test {
         feeAddress = address(0x4);
 
         // Deploy tokens
-        stakeToken = new MOST(10000 ** 18);
-        payToken = new BTC(10000 ** 18);
-        usdcToken = new USDC(10000 ** 18);
+        stakeTokenMOST = new MOST(10000 ** 18);
+        campaignTokenBTC = new BTC(10000 ** 18);
+        payTokenUSDC = new USDC(10000 ** 18);
 
-        staker = new Staker(address(stakeToken));
+        staker = new Staker(address(stakeTokenMOST));
 
         vm.deal(user1, 100 ether);
         vm.deal(user2, 100 ether);
 
-        stakeToken.transfer(user1, 1000 ether);
-        stakeToken.transfer(user2, 1000 ether);
+        stakeTokenMOST.transfer(user1, 1000 ether);
+        stakeTokenMOST.transfer(user2, 1000 ether);
 
-        usdcToken.transfer(user1, 1000 ether);
-        usdcToken.transfer(user2, 1000 ether);
+        payTokenUSDC.transfer(user1, 1000 ether);
+        payTokenUSDC.transfer(user2, 1000 ether);
+
+        softcap = uint256(10 ether);
+        hardcap = uint256(1000 ether);
+        tokenSalesQuantity = uint256(1000 ether);
+        fee = uint256(500);
 
         // Set up campaign parameters
-        address _token = address(usdcToken);
+        address _token = address(campaignTokenBTC);
         address _campaignOwner = owner;
-        uint256[4] memory _stats = [
-            uint256(100 ether),
-            uint256(1000 ether),
-            uint256(1000 ether),
-            uint256(500)
-        ];
+        uint256[4] memory _stats = [softcap, hardcap, tokenSalesQuantity, fee];
         // softCap, hardCap, tokenSalesQty, feePcnt
         uint256[4] memory _dates = [
             uint256(block.timestamp),
@@ -74,7 +79,7 @@ contract CampaignTest is Test {
             uint256(400),
             uint256(500)
         ];
-        address _payToken = address(payToken);
+        address _payToken = address(payTokenUSDC);
 
         // Deploy campaign contract
         campaign = new Campaign(
@@ -98,16 +103,26 @@ contract CampaignTest is Test {
         uint256 duration
     ) public {
         vm.prank(user);
-        stakeToken.approve(address(staker), amount);
+        stakeTokenMOST.approve(address(staker), amount);
         vm.prank(user);
         staker.stake(amount, duration);
     }
 
     function _fundIn() public {
         uint256 fundAmount = 1000 ether;
-        payToken.mint(owner, fundAmount);
-        payToken.approve(address(campaign), fundAmount);
+        campaignTokenBTC.mint(owner, fundAmount);
+        campaignTokenBTC.approve(address(campaign), fundAmount);
         campaign.fundIn();
+    }
+
+    function _registerUserForCampaign(
+        address user,
+        uint256 amount,
+        uint256 duration
+    ) public {
+        _setUpUserWithStake(user, amount, duration);
+        vm.prank(user);
+        campaign.registerForIDO();
     }
 
     function testConstructor() public view {
@@ -115,11 +130,11 @@ contract CampaignTest is Test {
         assertEq(campaign.campaignOwner(), owner, "Campaign owner mismatch");
 
         // Test stats
-        assertEq(campaign.softCap(), 100 ether, "Soft cap mismatch");
+        assertEq(campaign.softCap(), 10 ether, "Soft cap mismatch");
         assertEq(campaign.hardCap(), 1000 ether, "Hard cap mismatch");
         assertEq(
             campaign.tokenSalesQty(),
-            10000 ether,
+            1000 ether,
             "Token sales quantity mismatch"
         );
         assertEq(campaign.feePcnt(), 500, "Fee percentage mismatch");
@@ -146,9 +161,14 @@ contract CampaignTest is Test {
         assertEq(campaign.burnUnSold(), false, "Burn unsold flag mismatch");
         assertEq(campaign.tokenLockTime(), 30 days, "Token lock time mismatch");
         assertEq(
+            address(campaign.token()),
+            address(campaignTokenBTC),
+            "campaignToken address mismatch"
+        );
+        assertEq(
             address(campaign.payToken()),
-            address(payToken),
-            "Paytoken address mismatch"
+            address(payTokenUSDC),
+            "payToken address mismatch"
         );
         assertEq(campaign.staker(), address(staker), "Staker address mismatch");
         assertEq(campaign.feeAddress(), feeAddress, "Fee address mismatch");
@@ -252,17 +272,17 @@ contract CampaignTest is Test {
         uint256 fundAmount = 1000 ether;
 
         // Mint tokens to this contract
-        payToken.mint(address(this), fundAmount);
+        campaignTokenBTC.mint(address(this), fundAmount);
 
         // Approve the campaign to spend tokens
-        payToken.approve(address(campaign), fundAmount);
+        campaignTokenBTC.approve(address(campaign), fundAmount);
 
         // Fund the campaign
         campaign.fundIn();
 
         assertTrue(campaign.tokenFunded(), "Campaign should be funded");
         assertEq(
-            payToken.balanceOf(address(campaign)),
+            campaignTokenBTC.balanceOf(address(campaign)),
             fundAmount,
             "Campaign should have received tokens"
         );
@@ -270,8 +290,8 @@ contract CampaignTest is Test {
 
     function testFundInRevert() public {
         uint256 fundAmount = 10000 ether;
-        payToken.mint(address(this), fundAmount);
-        payToken.approve(address(campaign), fundAmount);
+        campaignTokenBTC.mint(address(this), fundAmount);
+        campaignTokenBTC.approve(address(campaign), fundAmount);
         campaign.fundIn();
 
         vm.expectRevert(CampaignNotFunded.selector);
@@ -302,24 +322,79 @@ contract CampaignTest is Test {
         assertEq(campaign.userTier(user2), 4, "User2 should be in tier 4");
     }
 
+    function testUserAllocation() public {
+        //check allocaiton for tier 4 when no-one other than 1 user has invested
+        //in this case, maxInvest should be hardcap and maxTokenGet should be all tokens
+        // because they are the only participant
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
+
+        (uint256 maxInvest, uint256 maxTokenGet) = campaign.userAllocation(
+            user1
+        );
+        assertEq(
+            maxInvest,
+            hardcap,
+            "Invalid maxInvest check user allocation function"
+        );
+        assertEq(
+            maxTokenGet,
+            tokenSalesQuantity,
+            "Invalid tokenSalesQuantity check user allocation function"
+        );
+
+        // a new participant enters the arena, joins 1st tear
+        _registerUserForCampaign(user2, 54_000, 90 days);
+        (uint256 maxInvest1, uint256 maxTokenGet1) = campaign.userAllocation(
+            user1
+        );
+        (uint256 maxInvest2, uint256 maxTokenGet2) = campaign.userAllocation(
+            user2
+        );
+        //now user 1 gets 80% and user 2 gets the rest
+        assertEq(
+            maxInvest1,
+            (hardcap * 80) / 100,
+            "Invalid maxInvest check user allocation function"
+        );
+        assertEq(
+            maxTokenGet1,
+            (tokenSalesQuantity * 80) / 100,
+            "Invalid maxInvest check user allocation function"
+        );
+
+        assertEq(
+            maxInvest2,
+            (hardcap * 20) / 100,
+            "Invalid maxInvest check user allocation function"
+        );
+        assertEq(
+            maxTokenGet2,
+            (tokenSalesQuantity * 20) / 100,
+            "Invalid maxInvest check user allocation function"
+        );
+    }
+
     function testBuyTierTokens() public {
         _fundIn();
-
-        vm.startPrank(user1);
-        campaign.registerForIDO();
+        _registerUserForCampaign(user1, 500_000, 90 days);
 
         vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-        uint256 buyAmount = 100 ether;
-        payToken.mint(user1, buyAmount);
-        payToken.approve(address(campaign), buyAmount);
+        (uint256 maxInvest, uint256 maxTokenGet) = campaign.userAllocation(
+            user1
+        );
+        uint256 buyAmount = maxInvest / 2;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
         campaign.buyTierTokens(buyAmount);
         vm.stopPrank();
 
         assertEq(
             campaign.participants(user1),
             buyAmount,
-            "User1 should have invested 100 ether"
+            "User1 should have invested 50 ether"
         );
     }
 
@@ -334,8 +409,8 @@ contract CampaignTest is Test {
     //     vm.warp(block.timestamp + 5 days + 1); // Move to FCFS period
 
     //     uint256 buyAmount = 100 ether;
-    //     payToken.mint(user1, buyAmount);
-    //     payToken.approve(address(campaign), buyAmount);
+    //     campaignTokenBTC.mint(user1, buyAmount);
+    //     campaignTokenBTC.approve(address(campaign), buyAmount);
     //     campaign.buyFCFSTokens(buyAmount);
     //     vm.stopPrank();
 
@@ -353,8 +428,8 @@ contract CampaignTest is Test {
     //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
     //     uint256 buyAmount = 200 ether;
-    //     payToken.mint(user1, buyAmount);
-    //     payToken.approve(address(campaign), buyAmount);
+    //     campaignTokenBTC.mint(user1, buyAmount);
+    //     campaignTokenBTC.approve(address(campaign), buyAmount);
     //     campaign.buyTierTokens(buyAmount);
     //     vm.stopPrank();
 
@@ -375,8 +450,8 @@ contract CampaignTest is Test {
     //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
     //     uint256 buyAmount = 200 ether;
-    //     payToken.mint(user1, buyAmount);
-    //     payToken.approve(address(campaign), buyAmount);
+    //     campaignTokenBTC.mint(user1, buyAmount);
+    //     campaignTokenBTC.approve(address(campaign), buyAmount);
     //     campaign.buyTierTokens(buyAmount);
     //     vm.stopPrank();
 
@@ -398,8 +473,8 @@ contract CampaignTest is Test {
     //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
     //     uint256 buyAmount = 200 ether;
-    //     payToken.mint(user1, buyAmount);
-    //     payToken.approve(address(campaign), buyAmount);
+    //     campaignTokenBTC.mint(user1, buyAmount);
+    //     campaignTokenBTC.approve(address(campaign), buyAmount);
     //     campaign.buyTierTokens(buyAmount);
 
     //     vm.warp(block.timestamp + 5 days); // Move to end period
@@ -426,8 +501,8 @@ contract CampaignTest is Test {
     //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
     //     uint256 buyAmount = 50 ether; // Less than softCap
-    //     payToken.mint(user1, buyAmount);
-    //     payToken.approve(address(campaign), buyAmount);
+    //     campaignTokenBTC.mint(user1, buyAmount);
+    //     campaignTokenBTC.approve(address(campaign), buyAmount);
     //     campaign.buyTierTokens(buyAmount);
 
     //     vm.warp(block.timestamp + 5 days); // Move to end period
@@ -438,6 +513,6 @@ contract CampaignTest is Test {
     //     vm.prank(user1);
     //     campaign.refund();
 
-    //     assertEq(payToken.balanceOf(user1), buyAmount, "User1 should have received a full refund");
+    //     assertEq(campaignTokenBTC.balanceOf(user1), buyAmount, "User1 should have received a full refund");
     // }
 }

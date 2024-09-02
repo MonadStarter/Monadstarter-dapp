@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Staker.sol";
+import "forge-std/console.sol";
 
 //TODO: Remove dependency on factory, remove factory function calls, add staker contract address
 // Update initialize and constructor
@@ -28,7 +29,7 @@ contract Campaign is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address public campaignOwner;
-    address public token; //usdc, eth or usdt
+    address public token; //campaignToken
     uint256 public softCap;
     uint256 public hardCap;
     uint256 public tokenSalesQty;
@@ -38,7 +39,7 @@ contract Campaign is ReentrancyGuard {
     uint256 public regEndDate;
     uint256 public tierSaleEndDate;
     uint256 public tokenLockTime; // probably don't need this
-    IERC20 public payToken; //campaignToken
+    IERC20 public payToken;
     address public staker;
     address public feeAddress; //multisig
 
@@ -230,7 +231,14 @@ contract Campaign is ReentrancyGuard {
     ) public view returns (uint256 maxInvest, uint256 maxTokensGet) {
         UserProfile memory usr = allUserProfile[account];
         TierProfile memory tier = indexToTier[usr.inTier];
+        console.log("Tier Weight", tier.weight);
+        console.log("User Multiplier", usr.multiplier);
+        console.log("HardCap", hardCap);
+
         uint256 userShare = (tier.weight * usr.multiplier) / 100;
+        console.log("sharePriceInMOST", sharePriceInMOST);
+        console.log("userShare", userShare);
+        console.log("totalPoolShares", totalPoolShares);
         if (isSharePriceSet) {
             maxInvest = sharePriceInMOST * userShare;
         } else {
@@ -264,7 +272,7 @@ contract Campaign is ReentrancyGuard {
         //require(amt > 0, "Invalid fund in amount");
 
         tokenFunded = true;
-        IERC20(payToken).safeTransferFrom(msg.sender, address(this), amt);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amt);
     }
 
     // In case of a "cancelled" campaign, or softCap not reached,
@@ -275,7 +283,7 @@ contract Campaign is ReentrancyGuard {
         }
 
         tokenFunded = false;
-        IERC20 ercToken = IERC20(payToken);
+        IERC20 ercToken = IERC20(token);
         uint256 totalTokens = ercToken.balanceOf(address(this));
         sendTokensTo(campaignOwner, totalTokens);
     }
@@ -318,7 +326,7 @@ contract Campaign is ReentrancyGuard {
         TierProfile storage tier = indexToTier[_tierIndex];
         tier.noOfParticipants = (tier.noOfParticipants) + 1; // Update no. of participants
         //REVIEW: do we also add multiplier here?
-        totalPoolShares = totalPoolShares + (tier.weight * _multiplier); // Update total shares
+        totalPoolShares = totalPoolShares + ((tier.weight * _multiplier) / 100); // Update total shares
         allUserProfile[_account] = UserProfile(true, _tierIndex, _multiplier); // Update user profile
 
         emit Registered(_account, block.timestamp, _tierIndex);
@@ -379,13 +387,14 @@ contract Campaign is ReentrancyGuard {
         if (value == 0 || value > getRemaining()) {
             revert InvalidAmount(value);
         }
-        payToken.safeTransferFrom(account, address(this), value);
 
         uint256 invested = participants[account] + value;
 
         if (invested > userMaxInvest(account)) {
             revert InvalidAmount(value);
         }
+
+        payToken.safeTransferFrom(account, address(this), value);
 
         if (participants[account] == 0) {
             participantsList.push(account);
@@ -619,19 +628,19 @@ contract Campaign is ReentrancyGuard {
 
     /**
      * @dev Calculate amount of token receivable.
-     * @param _MOSTInvestment - Amount of MOST invested
+     * @param _PayTokenInvestment - Amount of PayToken invested
      * @return - The amount of token
      * @notice - Access control: Public
      */
     function calculateTokenAmount(
-        uint256 _MOSTInvestment
+        uint256 _PayTokenInvestment
     ) public view returns (uint256) {
-        return (_MOSTInvestment * tokenSalesQty) / hardCap;
+        return (_PayTokenInvestment * tokenSalesQty) / hardCap;
     }
 
     /**
-     * @dev Gets remaining MOST to reach hardCap.
-     * @return - The amount of MOST.
+     * @dev Gets remaining paytoken to reach hardCap.
+     * @return - The amount of paytoken.
      * @notice - Access control: Public
      */
     function getRemaining() public view returns (uint256) {
