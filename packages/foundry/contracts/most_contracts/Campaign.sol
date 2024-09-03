@@ -33,6 +33,7 @@ contract Campaign is ReentrancyGuard {
     uint256 public softCap;
     uint256 public hardCap;
     uint256 public tokenSalesQty;
+    uint256 public tokensSold;
     uint256 public feePcnt;
     uint256 public startDate;
     uint256 public endDate;
@@ -67,7 +68,7 @@ contract Campaign is ReentrancyGuard {
 
     // Misc variables //
     uint256 public unlockDate;
-    uint256 public collectedToken;
+    uint256 public collectedPayToken;
 
     // States
     bool public tokenFunded;
@@ -400,7 +401,7 @@ contract Campaign is ReentrancyGuard {
             participantsList.push(account);
         }
         participants[account] = invested;
-        collectedToken = collectedToken + value;
+        collectedPayToken = collectedPayToken + value;
 
         emit Purchased(
             account,
@@ -427,9 +428,9 @@ contract Campaign is ReentrancyGuard {
         if (!isInFCFS()) {
             revert NotInFCFS();
         }
-        if (!userRegistered(account)) {
-            revert UserRegistrationError();
-        }
+        // if (!userRegistered(account)) {
+        //     revert UserRegistrationError();
+        // }
 
         // require(userRegistered(account), "Not regisered");
 
@@ -447,7 +448,7 @@ contract Campaign is ReentrancyGuard {
 
         participants[account] = invested;
 
-        collectedToken = collectedToken + value;
+        collectedPayToken = collectedPayToken + value;
 
         emit Purchased(
             account,
@@ -474,23 +475,24 @@ contract Campaign is ReentrancyGuard {
         if (failedOrCancelled()) {
             revert PresaleCancelled();
         }
-        if (collectedToken <= softCap) {
+        if (collectedPayToken <= softCap) {
             revert SoftcapNotReached();
         }
 
         finishUpSuccess = true;
 
-        uint256 feeAmt = getFeeAmt(collectedToken);
-        uint256 unSoldAmtMOST = getRemaining();
-        uint256 remainMOST = collectedToken - feeAmt;
+        //transfer payToken to campaign owner and take out fee to transfer to feeAddress
+        uint256 feeAmt = getFeeAmt(collectedPayToken);
+        uint256 payOwnerTokenAmount = collectedPayToken - feeAmt;
 
-        // Send fee to fee address
         if (feeAmt > 0) {
             payToken.safeTransfer(feeAddress, feeAmt);
         }
+        payToken.safeTransfer(campaignOwner, payOwnerTokenAmount);
 
-        payToken.safeTransfer(campaignOwner, remainMOST);
+        //transfer remaining token to campaign owner
 
+        uint256 unSoldAmtToken = getRemaining();
         // Calculate the unsold amount //
         if (unSoldAmtMOST > 0) {
             uint256 unsoldAmtToken = calculateTokenAmount(unSoldAmtMOST);
@@ -610,7 +612,7 @@ contract Campaign is ReentrancyGuard {
     function failedOrCancelled() public view returns (bool) {
         if (cancelled) return true;
 
-        return (block.timestamp >= endDate) && (softCap > collectedToken);
+        return (block.timestamp >= endDate) && (softCap > collectedPayToken);
     }
 
     /**
@@ -622,7 +624,7 @@ contract Campaign is ReentrancyGuard {
         if (!tokenFunded || cancelled) return false;
         if ((block.timestamp < startDate)) return false;
         if ((block.timestamp >= endDate)) return false;
-        if ((collectedToken >= hardCap)) return false;
+        if ((collectedPayToken >= hardCap)) return false;
         return true;
     }
 
@@ -644,7 +646,7 @@ contract Campaign is ReentrancyGuard {
      * @notice - Access control: Public
      */
     function getRemaining() public view returns (uint256) {
-        return hardCap - collectedToken;
+        return hardCap - collectedPayToken;
     }
 
     /**

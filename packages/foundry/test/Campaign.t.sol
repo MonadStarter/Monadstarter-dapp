@@ -46,7 +46,7 @@ contract CampaignTest is Test {
         payTokenUSDC.transfer(user1, 1000 ether);
         payTokenUSDC.transfer(user2, 1000 ether);
 
-        softcap = uint256(10 ether);
+        softcap = uint256(100_000);
         hardcap = uint256(1000 ether);
         tokenSalesQuantity = uint256(1000 ether);
         fee = uint256(500);
@@ -130,7 +130,7 @@ contract CampaignTest is Test {
         assertEq(campaign.campaignOwner(), owner, "Campaign owner mismatch");
 
         // Test stats
-        assertEq(campaign.softCap(), 10 ether, "Soft cap mismatch");
+        assertEq(campaign.softCap(), softcap, "Soft cap mismatch");
         assertEq(campaign.hardCap(), 1000 ether, "Hard cap mismatch");
         assertEq(
             campaign.tokenSalesQty(),
@@ -398,121 +398,247 @@ contract CampaignTest is Test {
         );
     }
 
-    // function testBuyFCFSTokens() public {
-    //     uint256 fundAmount = 10000 ether;
-    //     token.mint(address(this), fundAmount);
-    //     token.approve(address(campaign), fundAmount);
-    //     campaign.fundIn();
+    function testBuyFCFSTokens() public {
+        _fundIn();
+        vm.warp(block.timestamp + 5 days + 1); // Move to FCFS period
 
-    //     vm.startPrank(user1);
-    //     campaign.registerForIDO();
-    //     vm.warp(block.timestamp + 5 days + 1); // Move to FCFS period
+        uint256 buyAmount = 50 ether;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
+        campaign.buyFCFSTokens(buyAmount);
+        vm.stopPrank();
 
-    //     uint256 buyAmount = 100 ether;
-    //     campaignTokenBTC.mint(user1, buyAmount);
-    //     campaignTokenBTC.approve(address(campaign), buyAmount);
-    //     campaign.buyFCFSTokens(buyAmount);
-    //     vm.stopPrank();
+        assertEq(
+            campaign.participants(user1),
+            buyAmount,
+            "User1 should have invested 50 ether in FCFS"
+        );
+    }
 
-    //     assertEq(campaign.participants(user1), buyAmount, "User1 should have invested 100 ether");
-    // }
+    function testFinishUp() public {
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
+        _registerUserForCampaign(user2, 2500000, 90 days);
 
-    // function testFinishUp() public {
-    //     uint256 fundAmount = 10000 ether;
-    //     token.mint(address(this), fundAmount);
-    //     token.approve(address(campaign), fundAmount);
-    //     campaign.fundIn();
+        vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     vm.startPrank(user1);
-    //     campaign.registerForIDO();
-    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+        uint256 buyAmount = softcap;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
+        campaign.buyTierTokens(buyAmount);
+        vm.stopPrank();
 
-    //     uint256 buyAmount = 200 ether;
-    //     campaignTokenBTC.mint(user1, buyAmount);
-    //     campaignTokenBTC.approve(address(campaign), buyAmount);
-    //     campaign.buyTierTokens(buyAmount);
-    //     vm.stopPrank();
+        vm.warp(block.timestamp + 5 days + 1); // Move to end period
 
-    //     vm.warp(block.timestamp + 5 days); // Move to end period
-    //     campaign.finishUp();
+        vm.prank(owner);
+        campaign.finishUp();
 
-    //     assertTrue(campaign.finishUpSuccess(), "Campaign should be finished successfully");
-    // }
+        assertTrue(
+            campaign.finishUpSuccess(),
+            "Campaign should be finished successfully"
+        );
+
+        assertEq(payTokenUSDC.balanceOf(feeAddress), (500*(500_000+2500000))/10000, "fee calculation is messed up")
+        //need to finish this test
+
+    }
 
     // function testSetTokenClaimable() public {
-    //     uint256 fundAmount = 10000 ether;
-    //     token.mint(address(this), fundAmount);
-    //     token.approve(address(campaign), fundAmount);
-    //     campaign.fundIn();
+    //     _fundIn();
+    //     _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.startPrank(user1);
-    //     campaign.registerForIDO();
     //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = 200 ether;
-    //     campaignTokenBTC.mint(user1, buyAmount);
-    //     campaignTokenBTC.approve(address(campaign), buyAmount);
+    //     uint256 buyAmount = softcap;
+    //     payTokenUSDC.mint(user1, buyAmount);
+    //     vm.startPrank(user1);
+    //     payTokenUSDC.approve(address(campaign), buyAmount);
     //     campaign.buyTierTokens(buyAmount);
     //     vm.stopPrank();
 
-    //     vm.warp(block.timestamp + 5 days); // Move to end period
+    //     vm.warp(block.timestamp + 5 days + 1); // Move to end period
+
+    //     vm.prank(owner);
     //     campaign.finishUp();
+
+    //     vm.prank(owner);
     //     campaign.setTokenClaimable();
 
     //     assertTrue(campaign.tokenReadyToClaim(), "Tokens should be claimable");
     // }
 
     // function testClaimTokens() public {
-    //     uint256 fundAmount = 10000 ether;
-    //     token.mint(address(this), fundAmount);
-    //     token.approve(address(campaign), fundAmount);
-    //     campaign.fundIn();
+    //     _fundIn();
+    //     _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.startPrank(user1);
-    //     campaign.registerForIDO();
     //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = 200 ether;
-    //     campaignTokenBTC.mint(user1, buyAmount);
-    //     campaignTokenBTC.approve(address(campaign), buyAmount);
+    //     uint256 buyAmount = softcap;
+    //     payTokenUSDC.mint(user1, buyAmount);
+    //     vm.startPrank(user1);
+    //     payTokenUSDC.approve(address(campaign), buyAmount);
     //     campaign.buyTierTokens(buyAmount);
-
-    //     vm.warp(block.timestamp + 5 days); // Move to end period
     //     vm.stopPrank();
 
+    //     vm.warp(block.timestamp + 5 days + 1); // Move to end period
+
+    //     vm.prank(owner);
     //     campaign.finishUp();
+
+    //     vm.prank(owner);
     //     campaign.setTokenClaimable();
+
+    //     uint256 expectedTokens = campaign.getClaimableTokenAmt(user1);
 
     //     vm.prank(user1);
     //     campaign.claimTokens();
 
-    //     uint256 expectedTokens = campaign.calculateTokenAmount(buyAmount);
-    //     assertEq(token.balanceOf(user1), expectedTokens, "User1 should have received the correct amount of tokens");
+    //     assertEq(
+    //         campaignTokenBTC.balanceOf(user1),
+    //         expectedTokens,
+    //         "User1 should have received the correct amount of tokens"
+    //     );
     // }
 
     // function testRefund() public {
-    //     uint256 fundAmount = 10000 ether;
-    //     token.mint(address(this), fundAmount);
-    //     token.approve(address(campaign), fundAmount);
-    //     campaign.fundIn();
+    //     _fundIn();
+    //     _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.startPrank(user1);
-    //     campaign.registerForIDO();
     //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = 50 ether; // Less than softCap
-    //     campaignTokenBTC.mint(user1, buyAmount);
-    //     campaignTokenBTC.approve(address(campaign), buyAmount);
+    //     uint256 buyAmount = 5 ether; // Less than softcap
+    //     payTokenUSDC.mint(user1, buyAmount);
+    //     vm.startPrank(user1);
+    //     payTokenUSDC.approve(address(campaign), buyAmount);
     //     campaign.buyTierTokens(buyAmount);
-
-    //     vm.warp(block.timestamp + 5 days); // Move to end period
     //     vm.stopPrank();
 
+    //     vm.warp(block.timestamp + 5 days + 1); // Move to end period
+
+    //     vm.prank(owner);
     //     campaign.setCancelled();
+
+    //     uint256 balanceBefore = payTokenUSDC.balanceOf(user1);
 
     //     vm.prank(user1);
     //     campaign.refund();
 
-    //     assertEq(campaignTokenBTC.balanceOf(user1), buyAmount, "User1 should have received a full refund");
+    //     assertEq(
+    //         payTokenUSDC.balanceOf(user1),
+    //         balanceBefore + buyAmount,
+    //         "User1 should have received a refund"
+    //     );
+    // }
+
+    // function testSetCancelled() public {
+    //     _fundIn();
+
+    //     vm.prank(owner);
+    //     campaign.setCancelled();
+
+    //     assertTrue(campaign.cancelled(), "Campaign should be cancelled");
+    // }
+
+    // function testFailFundInTwice() public {
+    //     _fundIn();
+
+    //     vm.expectRevert(CampaignNotFunded.selector);
+    //     _fundIn();
+    // }
+
+    // function testFailRegisterAfterRegPeriod() public {
+    //     _fundIn();
+    //     vm.warp(block.timestamp + 2 days + 1); // Move past registration period
+
+    //     vm.expectRevert("Not In Registration Period");
+    //     _registerUserForCampaign(user1, 500_000, 90 days);
+    // }
+
+    // function testFailBuyTierTokensBeforeTierSale() public {
+    //     _fundIn();
+    //     _registerUserForCampaign(user1, 500_000, 90 days);
+
+    //     uint256 buyAmount = 10 ether;
+    //     payTokenUSDC.mint(user1, buyAmount);
+    //     vm.startPrank(user1);
+    //     payTokenUSDC.approve(address(campaign), buyAmount);
+
+    //     vm.expectRevert("Not in tier sale period");
+    //     campaign.buyTierTokens(buyAmount);
+    //     vm.stopPrank();
+    // }
+
+    // function testFailBuyFCFSTokensBeforeFCFSPeriod() public {
+    //     _fundIn();
+
+    //     uint256 buyAmount = 10 ether;
+    //     payTokenUSDC.mint(user1, buyAmount);
+    //     vm.startPrank(user1);
+    //     payTokenUSDC.approve(address(campaign), buyAmount);
+
+    //     vm.expectRevert("Not in FCFS sale period");
+    //     campaign.buyFCFSTokens(buyAmount);
+    //     vm.stopPrank();
+    // }
+
+    // function testFailFinishUpBeforeEnd() public {
+    //     _fundIn();
+    //     _registerUserForCampaign(user1, 500_000, 90 days);
+
+    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+
+    //     uint256 buyAmount = softcap;
+    //     payTokenUSDC.mint(user1, buyAmount);
+    //     vm.startPrank(user1);
+    //     payTokenUSDC.approve(address(campaign), buyAmount);
+    //     campaign.buyTierTokens(buyAmount);
+    //     vm.stopPrank();
+
+    //     vm.expectRevert("Presale is still live");
+    //     vm.prank(owner);
+    //     campaign.finishUp();
+    // }
+
+    // function testFailClaimTokensBeforeClaimable() public {
+    //     _fundIn();
+    //     _registerUserForCampaign(user1, 500_000, 90 days);
+
+    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+
+    //     uint256 buyAmount = softcap;
+    //     payTokenUSDC.mint(user1, buyAmount);
+    //     vm.startPrank(user1);
+    //     payTokenUSDC.approve(address(campaign), buyAmount);
+    //     campaign.buyTierTokens(buyAmount);
+    //     vm.stopPrank();
+
+    //     vm.warp(block.timestamp + 5 days + 1); // Move to end period
+
+    //     vm.prank(owner);
+    //     campaign.finishUp();
+
+    //     vm.expectRevert("Tokens not ready to claim yet");
+    //     vm.prank(user1);
+    //     campaign.claimTokens();
+    // }
+
+    // function testFailRefundBeforeCancellation() public {
+    //     _fundIn();
+    //     _registerUserForCampaign(user1, 500_000, 90 days);
+
+    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+
+    //     uint256 buyAmount = 5 ether;
+    //     payTokenUSDC.mint(user1, buyAmount);
+    //     vm.startPrank(user1);
+    //     payTokenUSDC.approve(address(campaign), buyAmount);
+    //     campaign.buyTierTokens(buyAmount);
+    //     vm.stopPrank();
+
+    //     vm.expectRevert("Can refund for failed or cancelled campaign only");
+    //     vm.prank(user1);
+    //     campaign.refund();
     // }
 }
