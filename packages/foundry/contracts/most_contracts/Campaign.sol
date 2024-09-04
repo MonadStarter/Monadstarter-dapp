@@ -475,7 +475,7 @@ contract Campaign is ReentrancyGuard {
         if (failedOrCancelled()) {
             revert PresaleCancelled();
         }
-        if (collectedPayToken <= softCap) {
+        if (collectedPayToken < softCap) {
             revert SoftcapNotReached();
         }
 
@@ -492,10 +492,12 @@ contract Campaign is ReentrancyGuard {
 
         //transfer remaining token to campaign owner
 
-        uint256 unSoldAmtToken = getRemaining();
+        uint256 unsoldTokenAmountUSDC = getRemaining(); //result is in terms of payToken
         // Calculate the unsold amount //
-        if (unSoldAmtMOST > 0) {
-            uint256 unsoldAmtToken = calculateTokenAmount(unSoldAmtMOST);
+        if (unsoldTokenAmountUSDC > 0) {
+            uint256 unsoldAmtToken = calculateTokenAmount(
+                unsoldTokenAmountUSDC
+            );
             // Burn or return UnSold token to owner
             sendTokensTo(
                 burnUnSold ? BURN_ADDRESS : campaignOwner,
@@ -601,7 +603,9 @@ contract Campaign is ReentrancyGuard {
      */
     function getFeeAmt(uint256 _amt) internal view returns (uint256) {
         //REViEW check decimal based on our token decimals
-        return (_amt * feePcnt) / (1e6);
+        console.log("AMOUNT", _amt);
+        console.log("feePcnt", feePcnt);
+        return (_amt * feePcnt) / (1e4);
     }
 
     /**

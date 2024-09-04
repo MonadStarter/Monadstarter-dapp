@@ -381,9 +381,7 @@ contract CampaignTest is Test {
 
         vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-        (uint256 maxInvest, uint256 maxTokenGet) = campaign.userAllocation(
-            user1
-        );
+        (uint256 maxInvest, ) = campaign.userAllocation(user1);
         uint256 buyAmount = maxInvest / 2;
         payTokenUSDC.mint(user1, buyAmount);
         vm.startPrank(user1);
@@ -394,7 +392,7 @@ contract CampaignTest is Test {
         assertEq(
             campaign.participants(user1),
             buyAmount,
-            "User1 should have invested 50 ether"
+            "User1 should have invested half of their max allocation"
         );
     }
 
@@ -432,17 +430,38 @@ contract CampaignTest is Test {
 
         vm.warp(block.timestamp + 5 days + 1); // Move to end period
 
+        uint256 ownerUSDCBalance = payTokenUSDC.balanceOf(owner);
+        uint256 ownerBTCBalance = campaignTokenBTC.balanceOf(owner);
+
         vm.prank(owner);
         campaign.finishUp();
+        vm.prank(owner);
+        campaign.setTokenClaimable();
+
+        vm.prank(user1);
+        campaign.claimTokens();
+        uint256 userBTCBalance = campaignTokenBTC.balanceOf(user1);
 
         assertTrue(
             campaign.finishUpSuccess(),
             "Campaign should be finished successfully"
         );
 
-        assertEq(payTokenUSDC.balanceOf(feeAddress), (500*(500_000+2500000))/10000, "fee calculation is messed up")
-        //need to finish this test
+        uint256 feeCalc = (500 * (buyAmount)) / 10000;
 
+        assertEq(
+            payTokenUSDC.balanceOf(feeAddress),
+            feeCalc,
+            "fee calculation is messed up"
+        );
+        assertEq(
+            payTokenUSDC.balanceOf(owner),
+            ownerUSDCBalance + (buyAmount - feeCalc)
+        );
+        assertEq(
+            campaignTokenBTC.balanceOf(owner),
+            ownerBTCBalance + (tokenSalesQuantity - userBTCBalance)
+        );
     }
 
     // function testSetTokenClaimable() public {
