@@ -237,7 +237,7 @@ contract Staker is IStaker, Ownable {
         //     "Array lengths do not match"
         // );
 
-        if (_addresses.length == _amounts.length) {
+        if (_addresses.length != _amounts.length) {
             revert LengthMismatch();
         }
         _checkDuration(_lockDuration);
