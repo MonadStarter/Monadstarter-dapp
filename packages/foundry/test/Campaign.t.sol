@@ -464,200 +464,200 @@ contract CampaignTest is Test {
         );
     }
 
-    // function testSetTokenClaimable() public {
-    //     _fundIn();
-    //     _registerUserForCampaign(user1, 500_000, 90 days);
+    function testSetTokenClaimable() public {
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+        vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = softcap;
-    //     payTokenUSDC.mint(user1, buyAmount);
-    //     vm.startPrank(user1);
-    //     payTokenUSDC.approve(address(campaign), buyAmount);
-    //     campaign.buyTierTokens(buyAmount);
-    //     vm.stopPrank();
+        uint256 buyAmount = softcap;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
+        campaign.buyTierTokens(buyAmount);
+        vm.stopPrank();
 
-    //     vm.warp(block.timestamp + 5 days + 1); // Move to end period
+        vm.warp(block.timestamp + 5 days + 1); // Move to end period
 
-    //     vm.prank(owner);
-    //     campaign.finishUp();
+        vm.prank(owner);
+        campaign.finishUp();
 
-    //     vm.prank(owner);
-    //     campaign.setTokenClaimable();
+        vm.prank(owner);
+        campaign.setTokenClaimable();
 
-    //     assertTrue(campaign.tokenReadyToClaim(), "Tokens should be claimable");
-    // }
+        assertTrue(campaign.tokenReadyToClaim(), "Tokens should be claimable");
+    }
 
-    // function testClaimTokens() public {
-    //     _fundIn();
-    //     _registerUserForCampaign(user1, 500_000, 90 days);
+    function testClaimTokens() public {
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+        vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = softcap;
-    //     payTokenUSDC.mint(user1, buyAmount);
-    //     vm.startPrank(user1);
-    //     payTokenUSDC.approve(address(campaign), buyAmount);
-    //     campaign.buyTierTokens(buyAmount);
-    //     vm.stopPrank();
+        uint256 buyAmount = softcap;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
+        campaign.buyTierTokens(buyAmount);
+        vm.stopPrank();
 
-    //     vm.warp(block.timestamp + 5 days + 1); // Move to end period
+        vm.warp(block.timestamp + 5 days + 1); // Move to end period
 
-    //     vm.prank(owner);
-    //     campaign.finishUp();
+        vm.prank(owner);
+        campaign.finishUp();
 
-    //     vm.prank(owner);
-    //     campaign.setTokenClaimable();
+        vm.prank(owner);
+        campaign.setTokenClaimable();
 
-    //     uint256 expectedTokens = campaign.getClaimableTokenAmt(user1);
+        uint256 expectedTokens = campaign.getClaimableTokenAmt(user1);
 
-    //     vm.prank(user1);
-    //     campaign.claimTokens();
+        vm.prank(user1);
+        campaign.claimTokens();
 
-    //     assertEq(
-    //         campaignTokenBTC.balanceOf(user1),
-    //         expectedTokens,
-    //         "User1 should have received the correct amount of tokens"
-    //     );
-    // }
+        assertEq(
+            campaignTokenBTC.balanceOf(user1),
+            expectedTokens,
+            "User1 should have received the correct amount of tokens"
+        );
+    }
 
-    // function testRefund() public {
-    //     _fundIn();
-    //     _registerUserForCampaign(user1, 500_000, 90 days);
+    function testRefund() public {
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+        vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = 5 ether; // Less than softcap
-    //     payTokenUSDC.mint(user1, buyAmount);
-    //     vm.startPrank(user1);
-    //     payTokenUSDC.approve(address(campaign), buyAmount);
-    //     campaign.buyTierTokens(buyAmount);
-    //     vm.stopPrank();
+        uint256 buyAmount = 5 ether; // Less than softcap
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
+        campaign.buyTierTokens(buyAmount);
+        vm.stopPrank();
 
-    //     vm.warp(block.timestamp + 5 days + 1); // Move to end period
+        vm.warp(block.timestamp + 5 days + 1); // Move to end period
 
-    //     vm.prank(owner);
-    //     campaign.setCancelled();
+        vm.prank(owner);
+        campaign.setCancelled();
 
-    //     uint256 balanceBefore = payTokenUSDC.balanceOf(user1);
+        uint256 balanceBefore = payTokenUSDC.balanceOf(user1);
 
-    //     vm.prank(user1);
-    //     campaign.refund();
+        vm.prank(user1);
+        campaign.refund();
 
-    //     assertEq(
-    //         payTokenUSDC.balanceOf(user1),
-    //         balanceBefore + buyAmount,
-    //         "User1 should have received a refund"
-    //     );
-    // }
+        assertEq(
+            payTokenUSDC.balanceOf(user1),
+            balanceBefore + buyAmount,
+            "User1 should have received a refund"
+        );
+    }
 
-    // function testSetCancelled() public {
-    //     _fundIn();
+    function testSetCancelled() public {
+        _fundIn();
 
-    //     vm.prank(owner);
-    //     campaign.setCancelled();
+        vm.prank(owner);
+        campaign.setCancelled();
 
-    //     assertTrue(campaign.cancelled(), "Campaign should be cancelled");
-    // }
+        assertTrue(campaign.cancelled(), "Campaign should be cancelled");
+    }
 
-    // function testFailFundInTwice() public {
-    //     _fundIn();
+    function testFailFundInTwice() public {
+        _fundIn();
 
-    //     vm.expectRevert(CampaignNotFunded.selector);
-    //     _fundIn();
-    // }
+        vm.expectRevert(CampaignNotFunded.selector);
+        _fundIn();
+    }
 
-    // function testFailRegisterAfterRegPeriod() public {
-    //     _fundIn();
-    //     vm.warp(block.timestamp + 2 days + 1); // Move past registration period
+    function testFailRegisterAfterRegPeriod() public {
+        _fundIn();
+        vm.warp(block.timestamp + 2 days + 1); // Move past registration period
 
-    //     vm.expectRevert("Not In Registration Period");
-    //     _registerUserForCampaign(user1, 500_000, 90 days);
-    // }
+        vm.expectRevert("Not In Registration Period");
+        _registerUserForCampaign(user1, 500_000, 90 days);
+    }
 
-    // function testFailBuyTierTokensBeforeTierSale() public {
-    //     _fundIn();
-    //     _registerUserForCampaign(user1, 500_000, 90 days);
+    function testFailBuyTierTokensBeforeTierSale() public {
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     uint256 buyAmount = 10 ether;
-    //     payTokenUSDC.mint(user1, buyAmount);
-    //     vm.startPrank(user1);
-    //     payTokenUSDC.approve(address(campaign), buyAmount);
+        uint256 buyAmount = 10 ether;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
 
-    //     vm.expectRevert("Not in tier sale period");
-    //     campaign.buyTierTokens(buyAmount);
-    //     vm.stopPrank();
-    // }
+        vm.expectRevert("Not in tier sale period");
+        campaign.buyTierTokens(buyAmount);
+        vm.stopPrank();
+    }
 
-    // function testFailBuyFCFSTokensBeforeFCFSPeriod() public {
-    //     _fundIn();
+    function testFailBuyFCFSTokensBeforeFCFSPeriod() public {
+        _fundIn();
 
-    //     uint256 buyAmount = 10 ether;
-    //     payTokenUSDC.mint(user1, buyAmount);
-    //     vm.startPrank(user1);
-    //     payTokenUSDC.approve(address(campaign), buyAmount);
+        uint256 buyAmount = 10 ether;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
 
-    //     vm.expectRevert("Not in FCFS sale period");
-    //     campaign.buyFCFSTokens(buyAmount);
-    //     vm.stopPrank();
-    // }
+        vm.expectRevert("Not in FCFS sale period");
+        campaign.buyFCFSTokens(buyAmount);
+        vm.stopPrank();
+    }
 
-    // function testFailFinishUpBeforeEnd() public {
-    //     _fundIn();
-    //     _registerUserForCampaign(user1, 500_000, 90 days);
+    function testFailFinishUpBeforeEnd() public {
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+        vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = softcap;
-    //     payTokenUSDC.mint(user1, buyAmount);
-    //     vm.startPrank(user1);
-    //     payTokenUSDC.approve(address(campaign), buyAmount);
-    //     campaign.buyTierTokens(buyAmount);
-    //     vm.stopPrank();
+        uint256 buyAmount = softcap;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
+        campaign.buyTierTokens(buyAmount);
+        vm.stopPrank();
 
-    //     vm.expectRevert("Presale is still live");
-    //     vm.prank(owner);
-    //     campaign.finishUp();
-    // }
+        vm.expectRevert("Presale is still live");
+        vm.prank(owner);
+        campaign.finishUp();
+    }
 
-    // function testFailClaimTokensBeforeClaimable() public {
-    //     _fundIn();
-    //     _registerUserForCampaign(user1, 500_000, 90 days);
+    function testFailClaimTokensBeforeClaimable() public {
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+        vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = softcap;
-    //     payTokenUSDC.mint(user1, buyAmount);
-    //     vm.startPrank(user1);
-    //     payTokenUSDC.approve(address(campaign), buyAmount);
-    //     campaign.buyTierTokens(buyAmount);
-    //     vm.stopPrank();
+        uint256 buyAmount = softcap;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
+        campaign.buyTierTokens(buyAmount);
+        vm.stopPrank();
 
-    //     vm.warp(block.timestamp + 5 days + 1); // Move to end period
+        vm.warp(block.timestamp + 5 days + 1); // Move to end period
 
-    //     vm.prank(owner);
-    //     campaign.finishUp();
+        vm.prank(owner);
+        campaign.finishUp();
 
-    //     vm.expectRevert("Tokens not ready to claim yet");
-    //     vm.prank(user1);
-    //     campaign.claimTokens();
-    // }
+        vm.expectRevert("Tokens not ready to claim yet");
+        vm.prank(user1);
+        campaign.claimTokens();
+    }
 
-    // function testFailRefundBeforeCancellation() public {
-    //     _fundIn();
-    //     _registerUserForCampaign(user1, 500_000, 90 days);
+    function testFailRefundBeforeCancellation() public {
+        _fundIn();
+        _registerUserForCampaign(user1, 500_000, 90 days);
 
-    //     vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
+        vm.warp(block.timestamp + 2 days + 1); // Move to tier sale period
 
-    //     uint256 buyAmount = 5 ether;
-    //     payTokenUSDC.mint(user1, buyAmount);
-    //     vm.startPrank(user1);
-    //     payTokenUSDC.approve(address(campaign), buyAmount);
-    //     campaign.buyTierTokens(buyAmount);
-    //     vm.stopPrank();
+        uint256 buyAmount = 5 ether;
+        payTokenUSDC.mint(user1, buyAmount);
+        vm.startPrank(user1);
+        payTokenUSDC.approve(address(campaign), buyAmount);
+        campaign.buyTierTokens(buyAmount);
+        vm.stopPrank();
 
-    //     vm.expectRevert("Can refund for failed or cancelled campaign only");
-    //     vm.prank(user1);
-    //     campaign.refund();
-    // }
+        vm.expectRevert("Can refund for failed or cancelled campaign only");
+        vm.prank(user1);
+        campaign.refund();
+    }
 }

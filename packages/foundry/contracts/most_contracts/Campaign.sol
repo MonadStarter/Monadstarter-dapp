@@ -603,8 +603,6 @@ contract Campaign is ReentrancyGuard {
      */
     function getFeeAmt(uint256 _amt) internal view returns (uint256) {
         //REViEW check decimal based on our token decimals
-        console.log("AMOUNT", _amt);
-        console.log("feePcnt", feePcnt);
         return (_amt * feePcnt) / (1e4);
     }
 
