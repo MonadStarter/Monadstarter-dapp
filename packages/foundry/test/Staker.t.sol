@@ -7,6 +7,9 @@ import "../contracts/most_contracts/Staker.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../contracts/most_contracts/MOST.sol";
 
+error OwnableUnauthorizedAccount(address account);
+error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed);
+
 contract StakerTest is Test {
     Staker public staker;
     MOST public token;
@@ -126,7 +129,7 @@ contract StakerTest is Test {
     }
 
     //no penalization
-    function testUnstake_noPenalization() public {
+    function testUnstakeNoPenalization() public {
         // User1 stakes tokens
         firstTimeStake(user1); //user 1 has 99 E, staked 1 E
         // User2 stakes tokens
@@ -247,7 +250,7 @@ contract StakerTest is Test {
         assertEq(lockedFor, duration);
     }
 
-    function testUnstake_Penalization() public {
+    function testUnstakePenalization() public {
         // User1 stakes tokens
         firstTimeStake(user1); //user 1 has 99 E, staked 1 E
         // User2 stakes tokens
@@ -512,5 +515,241 @@ contract StakerTest is Test {
             0.000000000001 ether,
             "The actual reward does not match the expected reward closely enough."
         );
+    }
+
+    function testSetMultiplier() public {
+        // Only owner can set multipliers
+        vm.prank(owner);
+        staker.setMultiplier(30 days, 25); // Set a new multiplier for 30 days
+
+        // Check the new multiplier is updated
+        uint256 newMultiplier = staker.getMultiplier(30 days);
+        assertEq(newMultiplier, 25, "Multiplier should be updated to 25");
+
+        // Non-owner cannot set multiplier
+        vm.startPrank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, user1)
+        );
+        staker.setMultiplier(30 days, 30);
+        vm.stopPrank();
+    }
+
+    function testSetAPRs() public {
+        // Only owner can set APRs
+        vm.prank(owner);
+        staker.setAPRs(30 days, 200); // Set a new APR for 30 days
+
+        // Check the new APR is updated
+        uint256 newAPR = staker.getAPR(30 days);
+        assertEq(newAPR, 200, "APR should be updated to 200");
+
+        // Non-owner cannot set APRs
+        vm.startPrank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, user1)
+        );
+        staker.setAPRs(30 days, 250);
+        vm.stopPrank();
+    }
+
+    function testWithdraw() public {
+        uint256 initialBalanceOfOwner = token.balanceOf(owner);
+        uint256 amountToFund = 50 ether;
+        uint256 amountToWithdraw = 10 ether;
+
+        // Fund the contract first
+        vm.startPrank(owner);
+        token.approve(address(staker), amountToFund);
+        staker.fundRewards(amountToFund);
+        vm.stopPrank();
+
+        // Only owner can withdraw
+        vm.prank(owner);
+        staker.withdraw(amountToWithdraw);
+        assertEq(
+            initialBalanceOfOwner - (amountToFund - amountToWithdraw),
+            token.balanceOf(owner),
+            "Owner should withdraw `amountToWithdraw`"
+        );
+
+        // Non-owner cannot withdraw
+        vm.startPrank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, user1)
+        );
+        staker.withdraw(1 ether);
+        vm.stopPrank();
+    }
+
+    function testStakedBalance() public {
+        // User1 stakes tokens
+        firstTimeStake(user1);
+
+        // Check staked balance reflects the stake
+        uint256 stakedAmount = staker.stakedBalance(user1);
+        assertEq(stakedAmount, 1 ether, "Staked amount should match");
+
+        // Check staked balance for a user with no stake
+        uint256 stakedAmountUser2 = staker.stakedBalance(user2);
+        assertEq(stakedAmountUser2, 0, "Staked amount should be 0 for user2");
+    }
+
+    function testGetUnlockTime() public {
+        // User1 stakes tokens for 30 days
+        firstTimeStake(user1);
+
+        // Check the unlock time is set correctly
+        uint256 unlockTime = staker.getUnlockTime(user1);
+        assertEq(
+            unlockTime,
+            block.timestamp + 30 days,
+            "Unlock time should be 30 days from now"
+        );
+
+        // Test unlock time after updating the stake duration
+        vm.startPrank(user1);
+        token.approve(address(staker), 1 ether);
+        staker.stake(1 ether, 60 days); // Update duration to 60 days
+        vm.stopPrank();
+
+        uint256 newUnlockTime = staker.getUnlockTime(user1);
+        assertEq(
+            newUnlockTime,
+            block.timestamp + 60 days,
+            "Unlock time should be updated to 60 days"
+        );
+    }
+
+    function testClaimRewards() public {
+        // Set up initial conditions
+        uint256 initialStake = 10 ether;
+        uint256 stakeDuration = 90 days; // Duration with a specific APR
+
+        // Fund user and approve transfer to Staker contract
+        vm.startPrank(user1);
+        token.approve(address(staker), initialStake);
+        staker.stake(initialStake, stakeDuration);
+        vm.stopPrank();
+
+        // Calculate expected reward after half the duration
+        uint256 halfDuration = stakeDuration / 2;
+        vm.warp(block.timestamp + halfDuration);
+
+        // Fund the reward pool to cover expected claims
+        uint256 rewardPoolAmount = 100 ether;
+        vm.startPrank(owner);
+        token.approve(address(staker), rewardPoolAmount);
+        staker.fundRewards(rewardPoolAmount);
+        vm.stopPrank();
+
+        // Capture balances before claiming
+        uint256 preClaimTokenBalance = token.balanceOf(user1);
+
+        // User1 claims rewards
+        vm.prank(user1);
+        staker.claim();
+
+        // Check the reward was paid out
+        uint256 postClaimTokenBalance = token.balanceOf(user1);
+
+        assertGt(
+            postClaimTokenBalance,
+            preClaimTokenBalance,
+            "Token balance should increase after claiming"
+        );
+
+        // Verify the correct reward amount
+        uint256 claimedReward = postClaimTokenBalance - preClaimTokenBalance;
+        uint256 expectedReward = _calculateExpectedReward(
+            initialStake,
+            halfDuration,
+            staker.getAPR(stakeDuration)
+        );
+
+        assertApproxEqAbs(
+            claimedReward,
+            expectedReward,
+            0.0001 ether,
+            "Claimed reward does not match the expected reward"
+        );
+    }
+
+    function testAirdropAndStakeSuccess() public {
+        address[] memory addresses = new address[](2);
+        uint256[] memory amounts = new uint256[](2);
+        addresses[0] = user1;
+        addresses[1] = user2;
+        amounts[0] = 1 ether;
+        amounts[1] = 2 ether;
+
+        uint256 totalAmount = 3 ether;
+        uint256 lockDuration = 90 days;
+
+        // Owner funds the contract to cover airdrop
+        vm.startPrank(owner);
+        token.approve(address(staker), totalAmount);
+        staker.airdropAndStake(addresses, amounts, totalAmount, lockDuration);
+        vm.stopPrank();
+
+        // Check staked amounts and lock details
+        for (uint i = 0; i < addresses.length; i++) {
+            (uint256 amountStaked, , uint256 lockedFor, ) = staker
+                .getUserStakeDetails(addresses[i]);
+            assertEq(
+                amountStaked,
+                amounts[i],
+                "Staked amount should match the airdropped amount"
+            );
+            assertEq(
+                lockedFor,
+                lockDuration,
+                "Lock duration should match the specified duration"
+            );
+        }
+    }
+
+    function testAirdropAndStakeMismatchedArrays() public {
+        address[] memory addresses = new address[](1);
+        uint256[] memory amounts = new uint256[](2); // Deliberate mismatch
+        addresses[0] = user1;
+        amounts[0] = 1 ether;
+        amounts[1] = 2 ether;
+
+        uint256 totalAmount = 3 ether;
+        uint256 lockDuration = 90 days;
+
+        vm.startPrank(owner);
+        token.approve(address(staker), totalAmount);
+        vm.expectRevert(abi.encodeWithSelector(LengthMismatch.selector));
+        staker.airdropAndStake(addresses, amounts, totalAmount, lockDuration);
+        vm.stopPrank();
+    }
+
+    function testAirdropAndStakeOnlyOwner() public {
+        address[] memory addresses = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        addresses[0] = user1;
+        amounts[0] = 1 ether;
+
+        uint256 totalAmount = 1 ether;
+        uint256 lockDuration = 90 days;
+
+        vm.startPrank(user1);
+        token.approve(address(staker), totalAmount);
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, user1)
+        );
+        staker.airdropAndStake(addresses, amounts, totalAmount, lockDuration);
+        vm.stopPrank();
+    }
+
+    // Helper function to calculate expected reward
+    function _calculateExpectedReward(
+        uint256 amountStaked,
+        uint256 timeStaked,
+        uint256 apr
+    ) internal pure returns (uint256) {
+        return (amountStaked * apr * timeStaked) / (365 days * 10000); // APR is multiplied by 100 to accommodate percentage base
     }
 }
