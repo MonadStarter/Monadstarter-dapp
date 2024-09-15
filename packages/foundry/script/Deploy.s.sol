@@ -32,15 +32,23 @@ contract DeployScript is ScaffoldETHDeploy {
             string.concat("most deployed at: ", vm.toString(address(most)))
         );
 
+        console.logString(
+            string.concat("btc deployed at: ", vm.toString(address(btc)))
+        );
+
+        console.logString(
+            string.concat("usdc deployed at: ", vm.toString(address(usdc)))
+        );
+
         Staker staker = new Staker(address(most));
         console.logString(
             string.concat("staker deployed at: ", vm.toString(address(staker)))
         );
 
-        softcap = uint256(100_000);
-        hardcap = uint256(1000 ether);
-        tokenSalesQuantity = uint256(1000 ether);
-        fee = uint256(500);
+        uint256 softcap = uint256(100_000);
+        uint256 hardcap = uint256(1000 ether);
+        uint256 tokenSalesQuantity = uint256(1000 ether);
+        uint256 fee = uint256(500);
 
         uint256[4] memory _stats = [softcap, hardcap, tokenSalesQuantity, fee];
         // softCap, hardCap, tokenSalesQty, feePcnt
@@ -68,8 +76,12 @@ contract DeployScript is ScaffoldETHDeploy {
             uint256(500)
         ];
 
+        // mock campaign owner
+        address _campaignOwner = 0x60187Bc4949eE2F01b507a9F77ad615093f44260;
+        address feeAddress = vm.addr(deployerPrivateKey);
+
         // Deploy campaign contract
-        campaign = new Campaign(
+        Campaign campaign = new Campaign(
             address(btc),
             _campaignOwner,
             _stats,
@@ -82,6 +94,14 @@ contract DeployScript is ScaffoldETHDeploy {
             address(staker),
             feeAddress
         );
+
+        console.logString(
+            string.concat(
+                "campaign deployed at: ",
+                vm.toString(address(campaign))
+            )
+        );
+
         vm.stopBroadcast();
 
         /**
